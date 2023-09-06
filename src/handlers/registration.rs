@@ -1,3 +1,4 @@
+use regex::Regex;
 use std::sync::Arc;
 
 use crate::{error::Cause, util, AppState, Error, Result};
@@ -14,6 +15,11 @@ use srs_opaque::{
     opaque::ServerRegistrationFlow,
 };
 use typenum::U96;
+
+lazy_static! {
+    static ref USERNAME_REGEX: Regex =
+        Regex::new(r"^[a-zA-Z0-9._+-]{3,32}(@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})?$").unwrap();
+}
 
 #[derive(Deserialize)]
 pub struct RegisterStep1Request {
@@ -79,6 +85,15 @@ pub async fn register_step1(
     state: web::Data<Arc<AppState>>,
     data: web::Query<RegisterStep1Request>,
 ) -> Result<RegisterStep1Response> {
+    if USERNAME_REGEX.captures(&data.username).is_none() {
+        return Err(Error {
+            status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
+            message: "Could not validate username".to_owned(),
+            code: crate::error::ErrorCode::ValidationError,
+            cause: None,
+        });
+    }
+
     let request = data.into_inner().try_into()?;
     let flow = ServerRegistrationFlow::new(&state.oprf_key, &state.server_public_key);
     let response = flow.start(&request);

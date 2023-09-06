@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 use blstrs::Scalar;
 use generic_array::GenericArray;
 use srs_opaque::{keypair::PublicKey, payload::Payload};
