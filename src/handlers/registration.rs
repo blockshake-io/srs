@@ -113,7 +113,13 @@ pub async fn register_step1(
                 &expiration_minutes,
             ],
         )
-        .await?;
+        .await
+        .map_err(|e| Error {
+            status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+            code: crate::error::ErrorCode::InternalError,
+            message: "Could not create session".to_owned(),
+            cause: Some(Cause::DbError(e)),
+        })?;
 
     Ok(response)
 }
