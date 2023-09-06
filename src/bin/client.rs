@@ -82,7 +82,6 @@ fn register(username: &str, password: &str) -> Result<()> {
 
     println!("[PHASE 2] connecting to server");
     let request = serde_json::to_string(&request2)?;
-    println!("{}", request);
     let client = reqwest::blocking::Client::new();
     let resp = client
         .post("http://localhost:8080/api/register/step2")
@@ -92,8 +91,7 @@ fn register(username: &str, password: &str) -> Result<()> {
     if resp.status().is_success() {
         println!("success! user registered");
     } else {
-        println!("failure! {}", resp.status());
-        println!("TEXT: {}", resp.text()?);
+        println!("[failure; {}] {}", resp.status(), resp.text()?);
     }
 
     Ok(())
