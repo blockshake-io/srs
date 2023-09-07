@@ -3,20 +3,22 @@ extern crate lazy_static;
 
 use blstrs::Scalar;
 use generic_array::GenericArray;
-use srs_opaque::{keypair::PublicKey, payload::Payload};
+use srs_opaque::{keypair::KeyPair, payload::Payload};
 use typenum::{U20, U4, U8};
 use zeroize::ZeroizeOnDrop;
 
 pub mod error;
 pub mod handlers;
+pub mod serialization;
 pub mod util;
 
 pub use error::Error;
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub struct AppState {
+    pub identity: String,
     pub oprf_key: Scalar,
-    pub server_public_key: PublicKey,
+    pub ke_keypair: KeyPair,
     pub db: deadpool_postgres::Pool,
 }
 

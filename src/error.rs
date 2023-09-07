@@ -23,6 +23,7 @@ pub enum Cause {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ErrorCode {
     MissingParameterError,
+    MissingRecordError,
     ValidationError,
     DeserializationError,
     InternalError,

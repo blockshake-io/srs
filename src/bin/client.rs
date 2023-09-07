@@ -5,7 +5,7 @@ use srs_indexer::{
 };
 use srs_opaque::{
     ciphersuite::Digest, messages::RegistrationResponse, opaque::ClientRegistrationFlow,
-    payload::Payload, primitives::derive_keypair,
+    primitives::derive_keypair,
 };
 
 fn argon2_stretch(input: &[u8], params: &KsfParams) -> srs_opaque::Result<Digest> {
@@ -64,8 +64,8 @@ fn register(username: &str, password: &str) -> Result<()> {
     let response: RegisterStep1Response = serde_json::from_str(&resp[..]).unwrap();
     let session_id = response.session_id;
     let response = RegistrationResponse {
-        evaluated_element: util::b64_decode_gt(&response.evaluated_element)?,
-        server_public_key: util::b64_decode_public_key(&response.server_public_key)?,
+        evaluated_element: response.evaluated_element,
+        server_public_key: response.server_public_key,
     };
     println!("obtained evaluated element, finalizing...");
 
@@ -73,10 +73,10 @@ fn register(username: &str, password: &str) -> Result<()> {
     let (registration_record, _) = registration_flow.finish(&response, ksf_stretch)?;
 
     let request2 = RegisterStep2Request {
-        envelope: util::b64_encode(&registration_record.envelope.serialize()),
-        masking_key: util::b64_encode(&registration_record.masking_key),
-        client_public_key: util::b64_encode(&registration_record.client_public_key.serialize()[..]),
-        payload: util::b64_encode(&payload.serialize()?[..]),
+        envelope: registration_record.envelope.clone(),
+        masking_key: registration_record.masking_key,
+        client_public_key: registration_record.client_public_key,
+        payload: payload,
         session_id,
     };
 

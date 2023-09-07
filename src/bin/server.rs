@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use actix_web::{web, App, HttpServer};
+use blstrs::Scalar;
 use config::Config;
 use srs_opaque::primitives::derive_keypair;
 use tokio_postgres::NoTls;
@@ -8,15 +9,17 @@ use tokio_postgres::NoTls;
 use srs_indexer::{
     error::ErrorCode::MissingParameterError,
     handlers::registration::{register_step1, register_step2},
-    util, AppState, Error, Result,
+    serialization, AppState, Error, Result,
 };
 
 use serde::Deserialize;
 #[derive(Debug, Default, Deserialize)]
 pub struct ServerConfig {
+    pub srv_identity: String,
     pub srv_address: String,
     pub srv_port: u16,
-    pub srv_oprf_key: String,
+    #[serde(with = "serialization::b64_scalar")]
+    pub srv_oprf_key: Scalar,
     pub srv_ke_seed: String,
     pub srv_ke_info: String,
     pub db_user: Option<String>,
@@ -48,14 +51,15 @@ async fn main() -> Result<()> {
         ..Default::default()
     };
 
-    let server_keypair = derive_keypair(
+    let ke_keypair = derive_keypair(
         server_config.srv_ke_seed.as_bytes(),
         server_config.srv_ke_info.as_bytes(),
     )?;
 
     let app_state = Arc::new(AppState {
-        oprf_key: util::b64_decode_blstrs_scalar(&server_config.srv_oprf_key)?,
-        server_public_key: server_keypair.public_key.clone(),
+        identity: server_config.srv_identity,
+        ke_keypair,
+        oprf_key: server_config.srv_oprf_key,
         db: db_config.create_pool(None, NoTls)?,
     });
 
@@ -76,9 +80,9 @@ async fn main() -> Result<()> {
             .app_data(query_cfg)
             .app_data(web::Data::new(app_state.clone()))
             .service(
-                web::scope("/api/register")
-                    .route("step1", web::get().to(register_step1))
-                    .route("step2", web::post().to(register_step2)),
+                web::scope("/api")
+                    .route("register/step1", web::get().to(register_step1))
+                    .route("register/step2", web::post().to(register_step2)),
             )
     })
     .bind((server_config.srv_address, server_config.srv_port))?

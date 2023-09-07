@@ -1,20 +1,20 @@
+use blstrs::{G2Affine, Gt};
 use regex::Regex;
 use std::sync::Arc;
 
-use crate::{error::Cause, util, AppState, Error, Result};
+use crate::{error::Cause, serialization, util, AppState, Error, KsfParams, Result};
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,
 };
-use blstrs::G2Affine;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use srs_opaque::{
-    ciphersuite::{LenHash, LenKePublicKey},
+    ciphersuite::Digest,
     keypair::PublicKey,
-    messages::{RegistrationRequest, RegistrationResponse},
+    messages::{Envelope, RegistrationRequest, RegistrationResponse},
     opaque::ServerRegistrationFlow,
+    payload::Payload,
 };
-use typenum::U96;
 
 lazy_static! {
     static ref USERNAME_REGEX: Regex =
@@ -24,28 +24,16 @@ lazy_static! {
 #[derive(Deserialize)]
 pub struct RegisterStep1Request {
     pub username: String,
-    pub blinded_element: String,
+    #[serde(with = "serialization::b64_g2")]
+    pub blinded_element: G2Affine,
 }
 
 impl TryInto<RegistrationRequest> for RegisterStep1Request {
     type Error = Error;
 
     fn try_into(self) -> Result<RegistrationRequest> {
-        let blinded_element = util::b64_decode::<U96>(&self.blinded_element)
-            .ok()
-            .and_then(|data| {
-                let buf: &[u8; 96] = data[..].try_into().unwrap();
-                G2Affine::from_compressed(buf).into()
-            })
-            .ok_or_else(|| Self::Error {
-                status: StatusCode::BAD_REQUEST.as_u16(),
-                code: crate::error::ErrorCode::ValidationError,
-                message: "could not parse blinded_element".to_owned(),
-                cause: None,
-            })?;
-
         Ok(RegistrationRequest {
-            blinded_element,
+            blinded_element: self.blinded_element,
             client_identity: self.username,
         })
     }
@@ -53,20 +41,19 @@ impl TryInto<RegistrationRequest> for RegisterStep1Request {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegisterStep1Response {
-    pub evaluated_element: String,
-    pub server_public_key: String,
+    #[serde(with = "serialization::b64_gt")]
+    pub evaluated_element: Gt,
+    #[serde(with = "serialization::b64_public_key")]
+    pub server_public_key: PublicKey,
     pub session_id: String,
 }
 
 impl RegisterStep1Response {
     fn build(response: &RegistrationResponse) -> Result<Self> {
-        let evaluated_element = util::b64_encode_gt(&response.evaluated_element)?;
-        let server_public_key = util::b64_encode_public_key(&response.server_public_key);
-        let session_id = String::from(util::generate_session_key());
         Ok(Self {
-            evaluated_element,
-            server_public_key,
-            session_id,
+            evaluated_element: response.evaluated_element,
+            server_public_key: response.server_public_key,
+            session_id: String::from(util::generate_session_key()),
         })
     }
 }
@@ -95,7 +82,7 @@ pub async fn register_step1(
     }
 
     let request = data.into_inner().try_into()?;
-    let flow = ServerRegistrationFlow::new(&state.oprf_key, &state.server_public_key);
+    let flow = ServerRegistrationFlow::new(&state.oprf_key, &state.ke_keypair.public_key);
     let response = flow.start(&request);
     let response = RegisterStep1Response::build(&response)?;
 
@@ -126,10 +113,14 @@ pub async fn register_step1(
 
 #[derive(Serialize, Deserialize)]
 pub struct RegisterStep2Request {
-    pub envelope: String,
-    pub masking_key: String,
-    pub client_public_key: String,
-    pub payload: String,
+    #[serde(with = "serialization::b64_envelope")]
+    pub envelope: Envelope,
+    #[serde(with = "serialization::b64_digest")]
+    pub masking_key: Digest,
+    #[serde(with = "serialization::b64_public_key")]
+    pub client_public_key: PublicKey,
+    #[serde(with = "serialization::b64_payload")]
+    pub payload: KsfParams,
     pub session_id: String,
 }
 
@@ -152,12 +143,6 @@ pub async fn register_step2(
     state: web::Data<Arc<AppState>>,
     data: web::Json<RegisterStep2Request>,
 ) -> Result<RegisterStep2Response> {
-    // make sure that masking_key and client_public_key are valid
-    util::b64_decode::<LenHash>(&data.masking_key)?;
-    PublicKey::deserialize(&util::b64_decode::<LenKePublicKey>(
-        &data.client_public_key,
-    )?)?;
-
     let mut client = state.db.get().await?;
     let txn = client.transaction().await?;
 
@@ -182,10 +167,10 @@ pub async fn register_step2(
         &stmt,
         &[
             &username,
-            &data.masking_key,
-            &data.client_public_key,
-            &data.envelope,
-            &data.payload,
+            &util::b64_encode(&data.masking_key),
+            &util::b64_encode(&data.client_public_key.serialize()),
+            &util::b64_encode(&data.envelope.serialize()),
+            &util::b64_encode(&data.payload.serialize()?),
         ],
     )
     .await
