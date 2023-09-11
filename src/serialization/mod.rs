@@ -51,7 +51,8 @@ pub mod b64_gt {
 }
 
 pub mod b64_public_key {
-    use crate::util::{self, b64_decode};
+    use crate::error;
+    use crate::util;
 
     use generic_array::GenericArray;
     use serde::{Deserialize, Serialize};
@@ -66,14 +67,18 @@ pub mod b64_public_key {
     }
 
     pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<PublicKey, D::Error> {
-        let buf: GenericArray<u8, LenKePublicKey> = b64_decode(&String::deserialize(d)?)
-            .map_err(|_| serde::de::Error::custom("Deserialization error for public key"))?;
-        PublicKey::deserialize(&buf[..])
+        decode(&String::deserialize(d)?)
             .map_err(|_| serde::de::Error::custom("Deserialization error for public key"))
+    }
+
+    pub fn decode(input: &str) -> Result<PublicKey, error::Error> {
+        let buf: GenericArray<u8, LenKePublicKey> = util::b64_decode(input)?;
+        Ok(PublicKey::deserialize(&buf[..])?)
     }
 }
 
 pub mod b64_digest {
+    use crate::error;
     use crate::util::{self, b64_decode};
 
     use serde::{Deserialize, Serialize};
@@ -87,13 +92,65 @@ pub mod b64_digest {
     }
 
     pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Digest, D::Error> {
-        b64_decode(&String::deserialize(d)?)
+        decode(&String::deserialize(d)?)
             .map_err(|_| serde::de::Error::custom("Deserialization error for digest"))
+    }
+
+    pub fn decode(input: &str) -> Result<Digest, error::Error> {
+        b64_decode(input)
+    }
+}
+
+pub mod b64_nonce {
+    use crate::error;
+    use crate::util::{self, b64_decode};
+
+    use serde::{Deserialize, Serialize};
+    use serde::{Deserializer, Serializer};
+
+    use srs_opaque::ciphersuite::Nonce;
+
+    pub fn serialize<S: Serializer>(v: &Nonce, s: S) -> Result<S::Ok, S::Error> {
+        let b64 = util::b64_encode(&v[..]);
+        String::serialize(&b64, s)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Nonce, D::Error> {
+        decode(&String::deserialize(d)?)
+            .map_err(|_| serde::de::Error::custom("Deserialization error for nonce"))
+    }
+
+    pub fn decode(input: &str) -> Result<Nonce, error::Error> {
+        b64_decode(input)
+    }
+}
+
+pub mod b64_auth_code {
+    use crate::error;
+    use crate::util::{self, b64_decode};
+
+    use serde::{Deserialize, Serialize};
+    use serde::{Deserializer, Serializer};
+
+    use srs_opaque::ciphersuite::AuthCode;
+
+    pub fn serialize<S: Serializer>(v: &AuthCode, s: S) -> Result<S::Ok, S::Error> {
+        let b64 = util::b64_encode(&v[..]);
+        String::serialize(&b64, s)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<AuthCode, D::Error> {
+        decode(&String::deserialize(d)?)
+            .map_err(|_| serde::de::Error::custom("Deserialization error for auth_code"))
+    }
+
+    pub fn decode(input: &str) -> Result<AuthCode, error::Error> {
+        b64_decode(input)
     }
 }
 
 pub mod b64_envelope {
-    use crate::util;
+    use crate::{util, error};
 
     use generic_array::GenericArray;
     use serde::{Deserialize, Serialize};
@@ -108,15 +165,18 @@ pub mod b64_envelope {
     }
 
     pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Envelope, D::Error> {
-        let buf: GenericArray<u8, LenEnvelope> = util::b64_decode(&String::deserialize(d)?)
-            .map_err(|_| serde::de::Error::custom("Deserialization error for envelope"))?;
-        Envelope::deserialize(&buf[..])
+        decode(&String::deserialize(d)?)
             .map_err(|_| serde::de::Error::custom("Deserialization error for envelope"))
+    }
+
+    pub fn decode(input: &str) -> Result<Envelope, error::Error> {
+        let buf: GenericArray<u8, LenEnvelope> = util::b64_decode(input)?;
+        Ok(Envelope::deserialize(&buf[..])?)
     }
 }
 
 pub mod b64_payload {
-    use crate::{util, KsfParams};
+    use crate::{util, KsfParams, error};
 
     use serde::{Deserialize, Serialize};
     use serde::{Deserializer, Serializer};
@@ -132,10 +192,36 @@ pub mod b64_payload {
     }
 
     pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<KsfParams, D::Error> {
-        let buf = util::b64_decode(&String::deserialize(d)?)
-            .map_err(|_| serde::de::Error::custom("Deserialization error for payload"))?;
-        KsfParams::deserialize(&buf)
+        decode(&String::deserialize(d)?)
             .map_err(|_| serde::de::Error::custom("Deserialization error for payload"))
+    }
+
+    pub fn decode(input: &str) -> Result<KsfParams, error::Error> {
+        let buf = util::b64_decode(input)?;
+        Ok(KsfParams::deserialize(&buf)?)
+    }
+}
+
+pub mod b64_masked_response {
+    use crate::{util, error};
+
+    use serde::{Deserialize, Serialize};
+    use serde::{Deserializer, Serializer};
+
+    use srs_opaque::ciphersuite::{Bytes, LenMaskedResponse};
+
+    pub fn serialize<S: Serializer>(v: &Bytes<LenMaskedResponse>, s: S) -> Result<S::Ok, S::Error> {
+        let b64 = util::b64_encode(&v[..]);
+        String::serialize(&b64, s)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Bytes<LenMaskedResponse>, D::Error> {
+        decode(&String::deserialize(d)?)
+            .map_err(|_| serde::de::Error::custom("Deserialization error for masked_response"))
+    }
+
+    pub fn decode(input: &str) -> Result<Bytes<LenMaskedResponse>, error::Error> {
+        util::b64_decode(input)
     }
 }
 

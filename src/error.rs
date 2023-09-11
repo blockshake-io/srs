@@ -28,6 +28,7 @@ pub enum ErrorCode {
     DeserializationError,
     InternalError,
     UsernameTakenError,
+    AuthenticationError,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

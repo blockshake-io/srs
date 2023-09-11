@@ -5,8 +5,8 @@ use blstrs::Scalar;
 use generic_array::GenericArray;
 use srs_opaque::{keypair::KeyPair, payload::Payload};
 use typenum::{U20, U4, U8};
-use zeroize::ZeroizeOnDrop;
 
+mod db;
 pub mod error;
 pub mod handlers;
 pub mod serialization;
@@ -22,7 +22,7 @@ pub struct AppState {
     pub db: deadpool_postgres::Pool,
 }
 
-#[derive(Clone, ZeroizeOnDrop)]
+#[derive(Debug, Copy, Clone)]
 pub struct KsfParams {
     pub m_cost: u32,
     pub t_cost: u32,

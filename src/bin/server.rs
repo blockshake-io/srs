@@ -8,7 +8,7 @@ use tokio_postgres::NoTls;
 
 use srs_indexer::{
     error::ErrorCode::MissingParameterError,
-    handlers::registration::{register_step1, register_step2},
+    handlers::{registration::{register_step1, register_step2}, login::{login_step1, login_step2}},
     serialization, AppState, Error, Result,
 };
 
@@ -64,10 +64,19 @@ async fn main() -> Result<()> {
     });
 
     HttpServer::new(move || {
-        // the QueryConfig error handler is called when a GET request
-        // cannot be parsed properly (e.g., because of a missing parameter).
-        // in this case we return a bad request
+        // the QueryConfig & JsonConfig error handlers are callend when a
+        // request cannot be parsed properly (e.g., because of a missing
+        // parameter). in this case we return a bad request
         let query_cfg = web::QueryConfig::default().error_handler(|err, _req| {
+            Error {
+                status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
+                code: MissingParameterError,
+                message: err.to_string(),
+                cause: None,
+            }
+            .into()
+        });
+        let json_cfg = web::JsonConfig::default().error_handler(|err, _req| {
             Error {
                 status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
                 code: MissingParameterError,
@@ -78,11 +87,14 @@ async fn main() -> Result<()> {
         });
         App::new()
             .app_data(query_cfg)
+            .app_data(json_cfg)
             .app_data(web::Data::new(app_state.clone()))
             .service(
                 web::scope("/api")
                     .route("register/step1", web::get().to(register_step1))
-                    .route("register/step2", web::post().to(register_step2)),
+                    .route("register/step2", web::post().to(register_step2))
+                    .route("login/step1", web::post().to(login_step1))
+                    .route("login/step2", web::post().to(login_step2)),
             )
     })
     .bind((server_config.srv_address, server_config.srv_port))?

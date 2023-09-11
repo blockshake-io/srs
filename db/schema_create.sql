@@ -6,6 +6,16 @@ create table pending_registrations (
 );
 
 
+create table pending_logins (
+  session_id text primary key,
+  username text,
+  session_key text,
+  expected_client_mac text,
+  created_at timestamp with time zone,
+  expires_at timestamp with time zone
+);
+
+
 create table users (
   id serial primary key,
   username text unique,
