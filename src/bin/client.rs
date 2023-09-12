@@ -1,7 +1,7 @@
 use std::{env, io::Write};
 use rand::thread_rng;
 use srs_indexer::{
-    handlers::{registration::{RegisterStep1Response, RegisterStep2Request}, login::{LoginStep1Request, LoginStep1Response, LoginStep2Request}},
+    handlers::{registration::{RegisterStep1Response, RegisterStep2Request}, login::{LoginStep1Request, LoginStep1Response, LoginStep2Request, LoginStep2Response}},
     util, KsfParams, Result, Error, error::{Cause, ErrorCode},
 };
 use srs_opaque::{
@@ -166,8 +166,30 @@ fn login(username: &str, password: &str) -> Result<()> {
         .header("Content-Type", "application/json")
         .body(request)
         .send()?;
+    if !resp.status().is_success() {
+        println!("[failure; {}] {}", resp.status(), resp.text()?);
+        return Err(Error {
+            status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
+            code: srs_indexer::error::ErrorCode::AuthenticationError,
+            message: "Could not authenticate".to_owned(),
+            cause: None,
+        });
+    }
+
+    let response: LoginStep2Response = serde_json::from_str(&resp.text()?).unwrap();
+    println!("Login successful, session key: {}", response.session_key);
+
+    println!("[PHASE 3] testing login");
+    let request = serde_json::to_string(&request2)?;
+    let client = reqwest::blocking::Client::new();
+    let resp = client
+        .get("http://localhost:8080/api/login/test")
+        .header("Content-Type", "application/json")
+        .header("Authorization", format!("Bearer {}", response.session_key))
+        .body(request)
+        .send()?;
     if resp.status().is_success() {
-        println!("success! user logged in");
+        println!("authentication test successfull");
     } else {
         println!("[failure; {}] {}", resp.status(), resp.text()?);
     }

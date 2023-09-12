@@ -7,6 +7,7 @@ use srs_opaque::{keypair::KeyPair, payload::Payload};
 use typenum::{U20, U4, U8};
 
 mod db;
+mod session;
 pub mod error;
 pub mod handlers;
 pub mod serialization;
@@ -15,11 +16,14 @@ pub mod util;
 pub use error::Error;
 pub type Result<T> = std::result::Result<T, Error>;
 
+pub struct UserId(u64);
+
 pub struct AppState {
     pub identity: String,
     pub oprf_key: Scalar,
     pub ke_keypair: KeyPair,
     pub db: deadpool_postgres::Pool,
+    pub redis: redis::Client,
 }
 
 #[derive(Debug, Copy, Clone)]

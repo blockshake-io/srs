@@ -2,7 +2,7 @@ use blstrs::{G2Affine, Gt};
 use regex::Regex;
 use std::sync::Arc;
 
-use crate::{error::Cause, serialization, util, AppState, Error, KsfParams, Result};
+use crate::{error::Cause, serialization, util, AppState, Error, KsfParams, Result, session::SessionKey};
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,
 };
@@ -53,7 +53,7 @@ impl RegisterStep1Response {
         Ok(Self {
             evaluated_element: response.evaluated_element,
             server_public_key: response.server_public_key,
-            session_id: String::from(util::generate_session_key()),
+            session_id: SessionKey::random().to_str(),
         })
     }
 }
@@ -168,9 +168,9 @@ pub async fn register_step2(
         &[
             &username,
             &util::b64_encode(&data.masking_key),
-            &util::b64_encode(&data.client_public_key.serialize()),
+            &util::b64_encode(&data.client_public_key.serialize()[..]),
             &util::b64_encode(&data.envelope.serialize()),
-            &util::b64_encode(&data.payload.serialize()?),
+            &util::b64_encode(&data.payload.serialize()?[..]),
         ],
     )
     .await

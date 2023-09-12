@@ -2,7 +2,7 @@ use blstrs::{G2Affine, Gt};
 use rand::thread_rng;
 use std::sync::Arc;
 
-use crate::{db, AppState, Error, Result, serialization, KsfParams, util, error::Cause};
+use crate::{db, AppState, Error, Result, serialization, KsfParams, util, error::Cause, session::{SrsSession, SessionKey}};
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,
 };
@@ -82,7 +82,7 @@ impl LoginStep1Response {
                 server_mac: ke2.auth_response.server_mac,
             },
             payload: ke2.payload,
-            session_id: String::from(util::generate_session_key()),
+            session_id: SessionKey::random().to_str(),
         }
     }
 }
@@ -128,8 +128,8 @@ pub async fn login_step1(
 
     let ke2 = flow.start()?;
     let response = LoginStep1Response::build(&ke2);
-    let session_key = util::b64_encode(flow.session_key().as_ref().unwrap());
-    let expected_client_mac = util::b64_encode(flow.expected_client_mac().as_ref().unwrap());
+    let session_key = util::b64_encode(&flow.session_key().as_ref().unwrap()[..]);
+    let expected_client_mac = util::b64_encode(&flow.expected_client_mac().as_ref().unwrap()[..]);
 
     let client = state.db.get().await?;
     let query = include_str!("../../db/queries/pending_logins_create.sql");
@@ -167,7 +167,7 @@ pub struct LoginStep2Request {
 
 #[derive(Serialize, Deserialize)]
 pub struct LoginStep2Response {
-    success: bool,
+    pub session_key: String,
 }
 
 impl Responder for LoginStep2Response {
@@ -185,7 +185,6 @@ pub async fn login_step2(
     data: web::Json<LoginStep2Request>,
 ) -> Result<LoginStep2Response> {
     let client = state.db.get().await?;
-
     // check & delete pending registration
     let stmt = include_str!("../../db/queries/pending_logins_drop.sql");
     let stmt = client.prepare(stmt).await?;
@@ -198,6 +197,7 @@ pub async fn login_step2(
             cause: None,
         });
     }
+    let username: String = result.first().unwrap().get("username");
     let expected_client_mac: String = result.first().unwrap().get("expected_client_mac");
     let expected_client_mac = serialization::b64_auth_code::decode(&expected_client_mac)?;
 
@@ -206,12 +206,47 @@ pub async fn login_step2(
     };
 
     if ke3.client_mac == expected_client_mac {
-        Ok(LoginStep2Response { success: true })
+        // TODO: replace with proper user id
+        let user_id = crate::UserId(1);
+        let session = SrsSession::new(&user_id, &mut state.redis.get_connection()?)?;
+        Ok(LoginStep2Response { session_key: session.key().unwrap().to_str() })
     } else {
         Err(Error {
             status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
             message: "Could not authorize user".to_owned(),
             code: crate::error::ErrorCode::DeserializationError,
+            cause: None,
+        })
+    }
+}
+
+
+#[derive(Serialize, Deserialize)]
+pub struct LoginTestResponse {
+    body: String,
+}
+
+impl Responder for LoginTestResponse {
+    type Body = BoxBody;
+
+    fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
+        HttpResponse::Ok()
+            .content_type(ContentType::plaintext())
+            .body(self.body)
+    }
+}
+
+pub async fn login_test(
+    state: web::Data<Arc<AppState>>,
+    session: SrsSession,
+) -> Result<LoginTestResponse> {
+    if session.is_authenticated(&mut state.redis.get_connection()?) {
+        Ok(LoginTestResponse { body: "success".to_owned() })
+    } else {
+        Err(Error {
+            status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
+            code: crate::error::ErrorCode::AuthenticationError,
+            message: "User not authenticated".to_owned(),
             cause: None,
         })
     }

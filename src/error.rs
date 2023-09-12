@@ -18,6 +18,7 @@ pub enum Cause {
     StdError(Box<dyn std::error::Error>),
     ReqwestError(reqwest::Error),
     Argon2Error(argon2::Error),
+    RedisError(redis::RedisError),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -29,6 +30,7 @@ pub enum ErrorCode {
     InternalError,
     UsernameTakenError,
     AuthenticationError,
+    SessionKeyNotFoundError,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -67,6 +69,7 @@ impl std::fmt::Display for Error {
             Cause::StdError(ref err) => Display::fmt(&err, f),
             Cause::ReqwestError(ref err) => Display::fmt(&err, f),
             Cause::Argon2Error(ref err) => Display::fmt(&err, f),
+            Cause::RedisError(ref err) => Display::fmt(&err, f),
             Cause::Custom(err) => write!(f, "Custom: {}", err),
             Cause::DeadpoolError => write!(f, "database error"),
         }
@@ -179,6 +182,17 @@ impl From<argon2::Error> for Error {
             code: ErrorCode::InternalError,
             message: "".to_owned(),
             cause: Some(Cause::Argon2Error(err)),
+        }
+    }
+}
+
+impl From<redis::RedisError> for Error {
+    fn from(err: redis::RedisError) -> Error {
+        Error {
+            status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+            code: ErrorCode::InternalError,
+            message: "".to_owned(),
+            cause: Some(Cause::RedisError(err)),
         }
     }
 }

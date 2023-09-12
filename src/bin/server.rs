@@ -8,7 +8,7 @@ use tokio_postgres::NoTls;
 
 use srs_indexer::{
     error::ErrorCode::MissingParameterError,
-    handlers::{registration::{register_step1, register_step2}, login::{login_step1, login_step2}},
+    handlers::{registration::{register_step1, register_step2}, login::{login_step1, login_step2, login_test}},
     serialization, AppState, Error, Result,
 };
 
@@ -26,6 +26,7 @@ pub struct ServerConfig {
     pub db_password: Option<String>,
     pub db_host: Option<String>,
     pub db_name: Option<String>,
+    pub redis_connection_string: String,
 }
 
 #[actix_web::main]
@@ -51,6 +52,8 @@ async fn main() -> Result<()> {
         ..Default::default()
     };
 
+    let redis_client = redis::Client::open(server_config.redis_connection_string)?;
+
     let ke_keypair = derive_keypair(
         server_config.srv_ke_seed.as_bytes(),
         server_config.srv_ke_info.as_bytes(),
@@ -61,6 +64,7 @@ async fn main() -> Result<()> {
         ke_keypair,
         oprf_key: server_config.srv_oprf_key,
         db: db_config.create_pool(None, NoTls)?,
+        redis: redis_client,
     });
 
     HttpServer::new(move || {
@@ -94,7 +98,8 @@ async fn main() -> Result<()> {
                     .route("register/step1", web::get().to(register_step1))
                     .route("register/step2", web::post().to(register_step2))
                     .route("login/step1", web::post().to(login_step1))
-                    .route("login/step2", web::post().to(login_step2)),
+                    .route("login/step2", web::post().to(login_step2))
+                    .route("login/test", web::get().to(login_test)),
             )
     })
     .bind((server_config.srv_address, server_config.srv_port))?
