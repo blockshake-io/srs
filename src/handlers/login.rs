@@ -115,7 +115,7 @@ pub async fn login_step1(
     data: web::Json<LoginStep1Request>,
 ) -> Result<LoginStep1Response> {
     // TODO here we might want to return a dummy record
-    let (user_id, record) = db::select_record(&state.db, &data.username)
+    let user = db::select_user_by_username(&state.db, &data.username)
         .await
         .map_err(|_| Error {
             status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
@@ -132,7 +132,7 @@ pub async fn login_step1(
         &state.ke_keypair.public_key,
         Some(&state.identity),
         &state.ke_keypair,
-        &record,
+        &user.registration_record,
         &state.oprf_key,
         &ke1,
         &username,
@@ -143,7 +143,7 @@ pub async fn login_step1(
     let response = LoginStep1Response::build(&ke2);
 
     let pending_login = serde_json::to_string(&PendingLogin {
-        user_id,
+        user_id: user.id,
         username: username.clone(),
         session_key: flow.session_key().unwrap(),
         expected_client_mac: flow.expected_client_mac().unwrap(),
