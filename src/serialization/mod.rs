@@ -187,7 +187,7 @@ pub mod b64_payload {
         let buf = v
             .serialize()
             .map_err(|_| serde::ser::Error::custom("Serialization error for payload"))?;
-        let b64 = util::b64_encode(&buf);
+        let b64 = util::b64_encode(&buf[..]);
         String::serialize(&b64, s)
     }
 

@@ -20,6 +20,8 @@ pub struct SessionKey {
 }
 
 impl SessionKey {
+    /// Extracts a session key from the value of an Authorization header
+    /// in the format "Bearer XYZ"
     pub fn from_bearer_token(input: &str) -> crate::Result<SessionKey> {
         if let Some(caps) = SESSION_KEY_REGEX.captures(input) {
             let session_key = caps["session_key"].to_owned();
@@ -71,8 +73,9 @@ impl SrsSession {
         SrsSession { session_key: None }
     }
 
-    pub fn new(user_id: &UserId, conn: &mut redis::Connection) -> crate::Result<SrsSession> {
+    pub fn create(user_id: &UserId, conn: &mut redis::Connection) -> crate::Result<SrsSession> {
         let session_key = SessionKey::random();
+        // TODO: expire the session after some time
         conn.set(session_key.as_str(), user_id.0)?;
         Ok(SrsSession { session_key: Some(session_key) })
     }

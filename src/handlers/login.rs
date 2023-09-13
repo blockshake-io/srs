@@ -1,8 +1,9 @@
 use blstrs::{G2Affine, Gt};
 use rand::thread_rng;
+use redis::Commands;
 use std::sync::Arc;
 
-use crate::{db, AppState, Error, Result, serialization, KsfParams, util, error::Cause, session::{SrsSession, SessionKey}};
+use crate::{db, AppState, Error, Result, serialization, KsfParams, session::{SrsSession, SessionKey}, UserId};
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,
 };
@@ -11,6 +12,8 @@ use srs_opaque::{
     messages::{AuthRequest, CredentialRequest, KeyExchange1, KeyExchange2, KeyExchange3},
     opaque::ServerLoginFlow, ciphersuite::{Nonce, Bytes, LenMaskedResponse, AuthCode}, keypair::PublicKey,
 };
+
+const PENDING_LOGIN_TTL_SEC: usize = 60;
 
 #[derive(Serialize, Deserialize)]
 pub struct LoginStep1Request {
@@ -97,12 +100,22 @@ impl Responder for LoginStep1Response {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct PendingLogin {
+    user_id: UserId,
+    username: String,
+    #[serde(with = "serialization::b64_auth_code")]
+    session_key: AuthCode,
+    #[serde(with = "serialization::b64_auth_code")]
+    expected_client_mac: AuthCode,
+}
+
 pub async fn login_step1(
     state: web::Data<Arc<AppState>>,
     data: web::Json<LoginStep1Request>,
 ) -> Result<LoginStep1Response> {
     // TODO here we might want to return a dummy record
-    let record = db::select_record(&state.db, &data.username)
+    let (user_id, record) = db::select_record(&state.db, &data.username)
         .await
         .map_err(|_| Error {
             status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
@@ -128,32 +141,15 @@ pub async fn login_step1(
 
     let ke2 = flow.start()?;
     let response = LoginStep1Response::build(&ke2);
-    let session_key = util::b64_encode(&flow.session_key().as_ref().unwrap()[..]);
-    let expected_client_mac = util::b64_encode(&flow.expected_client_mac().as_ref().unwrap()[..]);
 
-    let client = state.db.get().await?;
-    let query = include_str!("../../db/queries/pending_logins_create.sql");
-    let stmt = client.prepare(query).await?;
-
-    let expiration_minutes = "5";
-    client
-        .query(
-            &stmt,
-            &[
-                &response.session_id,
-                &username,
-                &session_key,
-                &expected_client_mac,
-                &expiration_minutes,
-            ],
-        )
-        .await
-        .map_err(|e| Error {
-            status: actix_web::http::StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
-            code: crate::error::ErrorCode::InternalError,
-            message: "Could not create session".to_owned(),
-            cause: Some(Cause::DbError(e)),
-        })?;
+    let pending_login = serde_json::to_string(&PendingLogin {
+        user_id,
+        username: username.clone(),
+        session_key: flow.session_key().unwrap(),
+        expected_client_mac: flow.expected_client_mac().unwrap(),
+    })?;
+    let mut client = state.redis.get_connection()?;
+    client.set_ex(response.session_id.clone(), pending_login, PENDING_LOGIN_TTL_SEC)?;
 
     Ok(response)
 }
@@ -165,6 +161,8 @@ pub struct LoginStep2Request {
     pub client_mac: AuthCode,
 }
 
+// TODO: should we add an expiration date to this token?
+// see https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#session-expiration
 #[derive(Serialize, Deserialize)]
 pub struct LoginStep2Response {
     pub session_key: String,
@@ -180,35 +178,32 @@ impl Responder for LoginStep2Response {
     }
 }
 
+fn get_pending_login(session_id: &str, redis: &redis::Client) -> Result<PendingLogin> {
+    let mut client = redis.get_connection()?;
+    let pending_login: String = client.get_del(session_id)?;
+    let pending_login: PendingLogin = serde_json::from_str(&pending_login)?;
+    Ok(pending_login)
+}
+
 pub async fn login_step2(
     state: web::Data<Arc<AppState>>,
     data: web::Json<LoginStep2Request>,
 ) -> Result<LoginStep2Response> {
-    let client = state.db.get().await?;
-    // check & delete pending registration
-    let stmt = include_str!("../../db/queries/pending_logins_drop.sql");
-    let stmt = client.prepare(stmt).await?;
-    let result = client.query(&stmt, &[&data.session_id]).await?;
-    if result.is_empty() {
-        return Err(Error {
+    let pending_login = get_pending_login(&data.session_id, &state.redis).map_err(|_|
+        Error {
             status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
             code: crate::error::ErrorCode::ValidationError,
             message: "could not find session".to_owned(),
             cause: None,
-        });
-    }
-    let username: String = result.first().unwrap().get("username");
-    let expected_client_mac: String = result.first().unwrap().get("expected_client_mac");
-    let expected_client_mac = serialization::b64_auth_code::decode(&expected_client_mac)?;
+    })?;
 
     let ke3 = KeyExchange3 {
         client_mac: data.client_mac,
     };
 
-    if ke3.client_mac == expected_client_mac {
-        // TODO: replace with proper user id
-        let user_id = crate::UserId(1);
-        let session = SrsSession::new(&user_id, &mut state.redis.get_connection()?)?;
+    // TODO: here we should call flow.finish
+    if ke3.client_mac == pending_login.expected_client_mac {
+        let session = SrsSession::create(&pending_login.user_id, &mut state.redis.get_connection()?)?;
         Ok(LoginStep2Response { session_key: session.key().unwrap().to_str() })
     } else {
         Err(Error {

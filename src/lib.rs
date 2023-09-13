@@ -3,6 +3,7 @@ extern crate lazy_static;
 
 use blstrs::Scalar;
 use generic_array::GenericArray;
+use serde::{Serialize, Deserialize};
 use srs_opaque::{keypair::KeyPair, payload::Payload};
 use typenum::{U20, U4, U8};
 
@@ -16,6 +17,7 @@ pub mod util;
 pub use error::Error;
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UserId(u64);
 
 pub struct AppState {

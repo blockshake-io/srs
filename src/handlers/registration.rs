@@ -1,4 +1,5 @@
 use blstrs::{G2Affine, Gt};
+use redis::Commands;
 use regex::Regex;
 use std::sync::Arc;
 
@@ -19,6 +20,13 @@ use srs_opaque::{
 lazy_static! {
     static ref USERNAME_REGEX: Regex =
         Regex::new(r"^[a-zA-Z0-9._+-]{3,32}(@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})?$").unwrap();
+}
+
+const PENDING_REGISTRATION_TTL_SEC: usize = 60;
+
+#[derive(Debug, Serialize, Deserialize)]
+struct PendingRegistration {
+    username: String,
 }
 
 #[derive(Deserialize)]
@@ -86,27 +94,11 @@ pub async fn register_step1(
     let response = flow.start(&request);
     let response = RegisterStep1Response::build(&response)?;
 
-    let client = state.db.get().await?;
-    let query = include_str!("../../db/queries/pending_registration_create.sql");
-    let stmt = client.prepare(query).await?;
-
-    let expiration_minutes = "5";
-    client
-        .query(
-            &stmt,
-            &[
-                &response.session_id,
-                &request.client_identity,
-                &expiration_minutes,
-            ],
-        )
-        .await
-        .map_err(|e| Error {
-            status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
-            code: crate::error::ErrorCode::InternalError,
-            message: "Could not create session".to_owned(),
-            cause: Some(Cause::DbError(e)),
-        })?;
+    let pending_registration = serde_json::to_string(&PendingRegistration {
+        username: request.client_identity.clone(),
+    })?;
+    let mut client = state.redis.get_connection()?;
+    client.set_ex(response.session_id.clone(), pending_registration, PENDING_REGISTRATION_TTL_SEC)?;
 
     Ok(response)
 }
@@ -139,34 +131,34 @@ impl Responder for RegisterStep2Response {
     }
 }
 
+fn get_pending_registration(session_id: &str, redis: &redis::Client) -> Result<PendingRegistration> {
+    let mut client = redis.get_connection()?;
+    let pending_login: String = client.get_del(session_id)?;
+    let pending_login: PendingRegistration = serde_json::from_str(&pending_login)?;
+    Ok(pending_login)
+}
+
 pub async fn register_step2(
     state: web::Data<Arc<AppState>>,
     data: web::Json<RegisterStep2Request>,
 ) -> Result<RegisterStep2Response> {
-    let mut client = state.db.get().await?;
-    let txn = client.transaction().await?;
-
     // check & delete pending registration
-    let stmt = include_str!("../../db/queries/pending_registration_drop.sql");
-    let stmt = txn.prepare(stmt).await?;
-    let result = txn.query(&stmt, &[&data.session_id]).await?;
-    if result.is_empty() {
-        return Err(Error {
+    let pending_registration = get_pending_registration(&data.session_id, &state.redis).map_err(|_|
+        Error {
             status: StatusCode::BAD_REQUEST.as_u16(),
             code: crate::error::ErrorCode::ValidationError,
             message: "could not find session".to_owned(),
             cause: None,
-        });
-    }
-    let username: String = result.first().unwrap().get("username");
+        })?;
 
     // check & insert new user
+    let client = state.db.get().await?;
     let stmt = include_str!("../../db/queries/user_create.sql");
-    let stmt = txn.prepare(stmt).await?;
-    txn.query(
+    let stmt = client.prepare(stmt).await?;
+    client.query(
         &stmt,
         &[
-            &username,
+            &pending_registration.username,
             &util::b64_encode(&data.masking_key),
             &util::b64_encode(&data.client_public_key.serialize()[..]),
             &util::b64_encode(&data.envelope.serialize()),
@@ -177,11 +169,9 @@ pub async fn register_step2(
     .map_err(|e| Error {
         status: StatusCode::BAD_REQUEST.as_u16(),
         code: crate::error::ErrorCode::UsernameTakenError,
-        message: format!("username '{}' is taken", username),
+        message: format!("username '{}' is taken", &pending_registration.username),
         cause: Some(Cause::DbError(e)),
     })?;
-
-    txn.commit().await?;
 
     Ok(RegisterStep2Response { success: true })
 }

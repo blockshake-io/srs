@@ -189,7 +189,7 @@ fn login(username: &str, password: &str) -> Result<()> {
         .body(request)
         .send()?;
     if resp.status().is_success() {
-        println!("authentication test successfull");
+        println!("authentication test successful");
     } else {
         println!("[failure; {}] {}", resp.status(), resp.text()?);
     }
