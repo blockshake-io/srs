@@ -18,7 +18,7 @@ pub mod util;
 pub use error::Error;
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct UserId(u64);
 
 pub struct AppState {

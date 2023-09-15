@@ -4,6 +4,7 @@ use actix_web::{FromRequest, dev::Payload, HttpRequest};
 use redis::Commands;
 use regex::Regex;
 use rand::{distributions::Alphanumeric, rngs::OsRng, Rng};
+use serde::{Serialize, Deserialize};
 
 use crate::{Error, UserId, redis::{ToRedisKey, NS_SESSION}};
 
@@ -68,6 +69,21 @@ impl SessionKey {
 }
 
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SessionData {
+    user_id: UserId,
+}
+
+impl SessionData {
+    fn to_json(&self) -> crate::Result<String> {
+        Ok(serde_json::to_string(self)?)
+    }
+
+    fn from_json(input: &str) -> crate::Result<Self> {
+        Ok(serde_json::from_str::<SessionData>(input)?)
+    }
+}
+
 pub struct SrsSession {
     session_key: Option<SessionKey>,
 }
@@ -81,18 +97,26 @@ impl SrsSession {
 
     pub fn create(user_id: &UserId, conn: &mut redis::Connection) -> crate::Result<SrsSession> {
         let session_key = SessionKey::random();
+        let session_data = SessionData { user_id: *user_id };
         // TODO: expire the session after some time
-        conn.set(session_key.to_redis_key(), user_id.0)?;
+        conn.set(session_key.to_redis_key(), session_data.to_json()?)?;
         Ok(SrsSession { session_key: Some(session_key) })
     }
 
-    pub fn is_authenticated(&self, conn: &mut redis::Connection) -> bool {
+    pub fn data(&self, conn: &mut redis::Connection) -> Option<SessionData> {
         if self.session_key.is_none() {
-            return false;
+            return None;
         }
         let key = self.session_key.as_ref().unwrap();
         let result: Result<String, _> = conn.get(key.to_redis_key());
-        result.is_ok()
+        if result.is_err() {
+            return None;
+        }
+        SessionData::from_json(&result.unwrap()).ok()
+    }
+
+    pub fn is_authenticated(&self, conn: &mut redis::Connection) -> bool {
+        self.data(conn).is_some()
     }
 
     pub fn key(&self) -> Option<&SessionKey> {
