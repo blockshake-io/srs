@@ -5,7 +5,7 @@ use redis::Commands;
 use regex::Regex;
 use rand::{distributions::Alphanumeric, rngs::OsRng, Rng};
 
-use crate::{Error, UserId};
+use crate::{Error, UserId, redis::{ToRedisKey, NS_SESSION}};
 
 lazy_static! {
     static ref SESSION_KEY_REGEX: Regex =
@@ -61,6 +61,10 @@ impl SessionKey {
     pub fn as_str(&self) -> &str {
         &self.key
     }
+
+    pub fn to_redis_key(&self) -> String {
+        self.key.to_redis_key(NS_SESSION)
+    }
 }
 
 
@@ -68,6 +72,8 @@ pub struct SrsSession {
     session_key: Option<SessionKey>,
 }
 
+// TODO: should we add an expiration date to this token?
+// see https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#session-expiration
 impl SrsSession {
     pub fn zero() -> SrsSession {
         SrsSession { session_key: None }
@@ -76,7 +82,7 @@ impl SrsSession {
     pub fn create(user_id: &UserId, conn: &mut redis::Connection) -> crate::Result<SrsSession> {
         let session_key = SessionKey::random();
         // TODO: expire the session after some time
-        conn.set(session_key.as_str(), user_id.0)?;
+        conn.set(session_key.to_redis_key(), user_id.0)?;
         Ok(SrsSession { session_key: Some(session_key) })
     }
 
@@ -85,7 +91,7 @@ impl SrsSession {
             return false;
         }
         let key = self.session_key.as_ref().unwrap();
-        let result: Result<String, _> = conn.get(key.as_str());
+        let result: Result<String, _> = conn.get(key.to_redis_key());
         result.is_ok()
     }
 

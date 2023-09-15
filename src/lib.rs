@@ -9,6 +9,7 @@ use typenum::{U20, U4, U8};
 
 mod db;
 mod session;
+mod redis;
 pub mod error;
 pub mod handlers;
 pub mod serialization;
@@ -25,7 +26,7 @@ pub struct AppState {
     pub oprf_key: Scalar,
     pub ke_keypair: KeyPair,
     pub db: deadpool_postgres::Pool,
-    pub redis: redis::Client,
+    pub redis: ::redis::Client,
 }
 
 #[derive(Debug, Copy, Clone)]

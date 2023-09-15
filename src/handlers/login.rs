@@ -3,7 +3,7 @@ use rand::thread_rng;
 use redis::Commands;
 use std::sync::Arc;
 
-use crate::{db, AppState, Error, Result, serialization, KsfParams, session::{SrsSession, SessionKey}, UserId};
+use crate::{db, AppState, Error, Result, serialization, KsfParams, session::{SrsSession, SessionKey}, UserId, redis::{ToRedisKey, NS_PENDING_LOGIN}};
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,
 };
@@ -149,7 +149,7 @@ pub async fn login_step1(
         expected_client_mac: flow.expected_client_mac().unwrap(),
     })?;
     let mut client = state.redis.get_connection()?;
-    client.set_ex(response.session_id.clone(), pending_login, PENDING_LOGIN_TTL_SEC)?;
+    client.set_ex(response.session_id.to_redis_key(NS_PENDING_LOGIN), pending_login, PENDING_LOGIN_TTL_SEC)?;
 
     Ok(response)
 }
@@ -161,8 +161,6 @@ pub struct LoginStep2Request {
     pub client_mac: AuthCode,
 }
 
-// TODO: should we add an expiration date to this token?
-// see https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#session-expiration
 #[derive(Serialize, Deserialize)]
 pub struct LoginStep2Response {
     pub session_key: String,
@@ -180,7 +178,7 @@ impl Responder for LoginStep2Response {
 
 fn get_pending_login(session_id: &str, redis: &redis::Client) -> Result<PendingLogin> {
     let mut client = redis.get_connection()?;
-    let pending_login: String = client.get_del(session_id)?;
+    let pending_login: String = client.get_del(session_id.to_redis_key(NS_PENDING_LOGIN))?;
     let pending_login: PendingLogin = serde_json::from_str(&pending_login)?;
     Ok(pending_login)
 }

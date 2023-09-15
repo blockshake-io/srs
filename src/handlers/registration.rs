@@ -3,7 +3,7 @@ use redis::Commands;
 use regex::Regex;
 use std::sync::Arc;
 
-use crate::{error::Cause, serialization, util, AppState, Error, KsfParams, Result, session::SessionKey};
+use crate::{error::Cause, serialization, util, AppState, Error, KsfParams, Result, session::SessionKey, redis::{ToRedisKey, NS_PENDING_REGISTRATION}};
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,
 };
@@ -98,7 +98,7 @@ pub async fn register_step1(
         username: request.client_identity.clone(),
     })?;
     let mut client = state.redis.get_connection()?;
-    client.set_ex(response.session_id.clone(), pending_registration, PENDING_REGISTRATION_TTL_SEC)?;
+    client.set_ex(response.session_id.to_redis_key(NS_PENDING_REGISTRATION), pending_registration, PENDING_REGISTRATION_TTL_SEC)?;
 
     Ok(response)
 }
@@ -133,7 +133,7 @@ impl Responder for RegisterStep2Response {
 
 fn get_pending_registration(session_id: &str, redis: &redis::Client) -> Result<PendingRegistration> {
     let mut client = redis.get_connection()?;
-    let pending_login: String = client.get_del(session_id)?;
+    let pending_login: String = client.get_del(session_id.to_redis_key(NS_PENDING_REGISTRATION))?;
     let pending_login: PendingRegistration = serde_json::from_str(&pending_login)?;
     Ok(pending_login)
 }
