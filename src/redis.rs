@@ -8,12 +8,12 @@ pub(crate) trait ToRedisKey {
 
 impl ToRedisKey for str {
     fn to_redis_key(&self, prefix: &str) -> String {
-       format!("{}:{}", prefix, self)
+        format!("{}:{}", prefix, self)
     }
 }
 
 impl ToRedisKey for String {
     fn to_redis_key(&self, prefix: &str) -> String {
-       format!("{}:{}", prefix, &self)
+        format!("{}:{}", prefix, &self)
     }
 }

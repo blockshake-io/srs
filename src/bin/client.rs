@@ -1,13 +1,20 @@
-use std::{env, io::Write};
 use rand::thread_rng;
 use srs_indexer::{
-    handlers::{registration::{RegisterStep1Response, RegisterStep2Request}, login::{LoginStep1Request, LoginStep1Response, LoginStep2Request, LoginStep2Response}},
-    util, KsfParams, Result, Error, error::{Cause, ErrorCode},
+    error::{Cause, ErrorCode},
+    handlers::{
+        login::{LoginStep1Request, LoginStep1Response, LoginStep2Request, LoginStep2Response},
+        registration::{RegisterStep1Response, RegisterStep2Request},
+    },
+    util, Error, KsfParams, Result,
 };
 use srs_opaque::{
-    ciphersuite::Digest, messages::{RegistrationResponse, KeyExchange2, AuthResponse, CredentialResponse}, opaque::{ClientRegistrationFlow, ClientLoginFlow},
-    primitives::derive_keypair, keypair::PublicKey,
+    ciphersuite::Digest,
+    keypair::PublicKey,
+    messages::{AuthResponse, CredentialResponse, KeyExchange2, RegistrationResponse},
+    opaque::{ClientLoginFlow, ClientRegistrationFlow},
+    primitives::derive_keypair,
 };
+use std::{env, io::Write};
 
 const SERVER_IDENTITY: &str = "srs.blockshake.io";
 
@@ -98,11 +105,7 @@ fn register(username: &str, password: &str, server_public_key: &PublicKey) -> Re
 
 fn login(username: &str, password: &str) -> Result<()> {
     let rng = thread_rng();
-    let mut login_flow = ClientLoginFlow::new(
-        username,
-        password.as_bytes(),
-        rng,
-    );
+    let mut login_flow = ClientLoginFlow::new(username, password.as_bytes(), rng);
 
     let ke1 = login_flow.start()?;
     let request = LoginStep1Request {
@@ -144,14 +147,14 @@ fn login(username: &str, password: &str) -> Result<()> {
         payload: response.payload,
     };
     let ksf_stretch = |input: &[u8]| argon2_stretch(input, &ke2.payload);
-    let (ke3, _session_key, _export_key) = login_flow.finish(Some(SERVER_IDENTITY), &ke2, ksf_stretch).map_err(|e|
-        Error {
+    let (ke3, _session_key, _export_key) = login_flow
+        .finish(Some(SERVER_IDENTITY), &ke2, ksf_stretch)
+        .map_err(|e| Error {
             status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
             code: ErrorCode::AuthenticationError,
             message: "Could not authenticate".to_owned(),
             cause: Some(Cause::OpaqueError(e)),
-        }
-    )?;
+        })?;
 
     let request2 = LoginStep2Request {
         session_id: response.session_id,
@@ -197,7 +200,6 @@ fn login(username: &str, password: &str) -> Result<()> {
     Ok(())
 }
 
-
 fn read_username_password() -> Result<(String, String)> {
     let mut username = String::new();
     let mut password = String::new();
@@ -209,9 +211,11 @@ fn read_username_password() -> Result<(String, String)> {
     print!("Password (not hidden): ");
     std::io::stdout().flush().unwrap();
     std::io::stdin().read_line(&mut password)?;
-    Ok((username.trim_end().to_owned(), password.trim_end().to_owned()))
+    Ok((
+        username.trim_end().to_owned(),
+        password.trim_end().to_owned(),
+    ))
 }
-
 
 fn main() -> Result<()> {
     let mut args = env::args();
@@ -231,11 +235,11 @@ fn main() -> Result<()> {
             let server_keypair = derive_keypair(b"foo", b"bar")?;
             let server_public_key = server_keypair.public_key.clone();
             register(&username, &password, &server_public_key)?;
-        },
+        }
         "login" => {
             let (username, password) = read_username_password()?;
             login(&username, &password)?;
-        },
+        }
         _ => {
             eprintln!("unknown command `{}`", cmd);
             std::process::exit(-1);

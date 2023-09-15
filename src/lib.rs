@@ -3,16 +3,16 @@ extern crate lazy_static;
 
 use blstrs::Scalar;
 use generic_array::GenericArray;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use srs_opaque::{keypair::KeyPair, payload::Payload};
 use typenum::{U20, U4, U8};
 
 mod db;
-mod session;
-mod redis;
 pub mod error;
 pub mod handlers;
+mod redis;
 pub mod serialization;
+mod session;
 pub mod util;
 
 pub use error::Error;

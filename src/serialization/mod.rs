@@ -150,7 +150,7 @@ pub mod b64_auth_code {
 }
 
 pub mod b64_envelope {
-    use crate::{util, error};
+    use crate::{error, util};
 
     use generic_array::GenericArray;
     use serde::{Deserialize, Serialize};
@@ -176,7 +176,7 @@ pub mod b64_envelope {
 }
 
 pub mod b64_payload {
-    use crate::{util, KsfParams, error};
+    use crate::{error, util, KsfParams};
 
     use serde::{Deserialize, Serialize};
     use serde::{Deserializer, Serializer};
@@ -203,7 +203,7 @@ pub mod b64_payload {
 }
 
 pub mod b64_masked_response {
-    use crate::{util, error};
+    use crate::{error, util};
 
     use serde::{Deserialize, Serialize};
     use serde::{Deserializer, Serializer};
@@ -215,7 +215,9 @@ pub mod b64_masked_response {
         String::serialize(&b64, s)
     }
 
-    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Bytes<LenMaskedResponse>, D::Error> {
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<Bytes<LenMaskedResponse>, D::Error> {
         decode(&String::deserialize(d)?)
             .map_err(|_| serde::de::Error::custom("Deserialization error for masked_response"))
     }

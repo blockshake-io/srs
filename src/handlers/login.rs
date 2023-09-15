@@ -3,14 +3,22 @@ use rand::thread_rng;
 use redis::Commands;
 use std::sync::Arc;
 
-use crate::{db, AppState, Error, Result, serialization, KsfParams, session::{SrsSession, SessionKey}, UserId, redis::{ToRedisKey, NS_PENDING_LOGIN}};
+use crate::{
+    db,
+    redis::{ToRedisKey, NS_PENDING_LOGIN},
+    serialization,
+    session::{SessionKey, SrsSession},
+    AppState, Error, KsfParams, Result, UserId,
+};
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,
 };
 use serde::{Deserialize, Serialize};
 use srs_opaque::{
+    ciphersuite::{AuthCode, Bytes, LenMaskedResponse, Nonce},
+    keypair::PublicKey,
     messages::{AuthRequest, CredentialRequest, KeyExchange1, KeyExchange2, KeyExchange3},
-    opaque::ServerLoginFlow, ciphersuite::{Nonce, Bytes, LenMaskedResponse, AuthCode}, keypair::PublicKey,
+    opaque::ServerLoginFlow,
 };
 
 const PENDING_LOGIN_TTL_SEC: usize = 60;
@@ -149,7 +157,11 @@ pub async fn login_step1(
         expected_client_mac: flow.expected_client_mac().unwrap(),
     })?;
     let mut client = state.redis.get_connection()?;
-    client.set_ex(response.session_id.to_redis_key(NS_PENDING_LOGIN), pending_login, PENDING_LOGIN_TTL_SEC)?;
+    client.set_ex(
+        response.session_id.to_redis_key(NS_PENDING_LOGIN),
+        pending_login,
+        PENDING_LOGIN_TTL_SEC,
+    )?;
 
     Ok(response)
 }
@@ -187,12 +199,11 @@ pub async fn login_step2(
     state: web::Data<Arc<AppState>>,
     data: web::Json<LoginStep2Request>,
 ) -> Result<LoginStep2Response> {
-    let pending_login = get_pending_login(&data.session_id, &state.redis).map_err(|_|
-        Error {
-            status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
-            code: crate::error::ErrorCode::ValidationError,
-            message: "could not find session".to_owned(),
-            cause: None,
+    let pending_login = get_pending_login(&data.session_id, &state.redis).map_err(|_| Error {
+        status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
+        code: crate::error::ErrorCode::ValidationError,
+        message: "could not find session".to_owned(),
+        cause: None,
     })?;
 
     let ke3 = KeyExchange3 {
@@ -201,8 +212,11 @@ pub async fn login_step2(
 
     // TODO: here we should call flow.finish
     if ke3.client_mac == pending_login.expected_client_mac {
-        let session = SrsSession::create(&pending_login.user_id, &mut state.redis.get_connection()?)?;
-        Ok(LoginStep2Response { session_key: session.key().unwrap().to_str() })
+        let session =
+            SrsSession::create(&pending_login.user_id, &mut state.redis.get_connection()?)?;
+        Ok(LoginStep2Response {
+            session_key: session.key().unwrap().to_str(),
+        })
     } else {
         Err(Error {
             status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
@@ -212,7 +226,6 @@ pub async fn login_step2(
         })
     }
 }
-
 
 #[derive(Serialize, Deserialize)]
 pub struct LoginTestResponse {
@@ -234,7 +247,9 @@ pub async fn login_test(
     session: SrsSession,
 ) -> Result<LoginTestResponse> {
     if session.is_authenticated(&mut state.redis.get_connection()?) {
-        Ok(LoginTestResponse { body: "success".to_owned() })
+        Ok(LoginTestResponse {
+            body: "success".to_owned(),
+        })
     } else {
         Err(Error {
             status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),

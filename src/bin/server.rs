@@ -8,7 +8,10 @@ use tokio_postgres::NoTls;
 
 use srs_indexer::{
     error::ErrorCode::MissingParameterError,
-    handlers::{registration::{register_step1, register_step2}, login::{login_step1, login_step2, login_test}},
+    handlers::{
+        login::{login_step1, login_step2, login_test},
+        registration::{register_step1, register_step2},
+    },
     serialization, AppState, Error, Result,
 };
 

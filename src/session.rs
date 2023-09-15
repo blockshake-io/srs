@@ -1,12 +1,15 @@
-use std::future::{Ready, ready};
+use std::future::{ready, Ready};
 
-use actix_web::{FromRequest, dev::Payload, HttpRequest};
+use actix_web::{dev::Payload, FromRequest, HttpRequest};
+use rand::{distributions::Alphanumeric, rngs::OsRng, Rng};
 use redis::Commands;
 use regex::Regex;
-use rand::{distributions::Alphanumeric, rngs::OsRng, Rng};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::{Error, UserId, redis::{ToRedisKey, NS_SESSION}};
+use crate::{
+    redis::{ToRedisKey, NS_SESSION},
+    Error, UserId,
+};
 
 lazy_static! {
     static ref SESSION_KEY_REGEX: Regex =
@@ -51,7 +54,7 @@ impl SessionKey {
         // These unwraps will never panic because pre-conditions are always verified
         // (i.e. length and character set)
         SessionKey {
-            key: String::from_utf8(value).unwrap()
+            key: String::from_utf8(value).unwrap(),
         }
     }
 
@@ -67,7 +70,6 @@ impl SessionKey {
         self.key.to_redis_key(NS_SESSION)
     }
 }
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionData {
@@ -100,7 +102,9 @@ impl SrsSession {
         let session_data = SessionData { user_id: *user_id };
         // TODO: expire the session after some time
         conn.set(session_key.to_redis_key(), session_data.to_json()?)?;
-        Ok(SrsSession { session_key: Some(session_key) })
+        Ok(SrsSession {
+            session_key: Some(session_key),
+        })
     }
 
     pub fn data(&self, conn: &mut redis::Connection) -> Option<SessionData> {
@@ -138,7 +142,7 @@ impl FromRequest for SrsSession {
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
         let header = req.headers().get(STR_AUTHORIZATION);
         if header.is_none() {
-            return ready(Ok(SrsSession::zero()))
+            return ready(Ok(SrsSession::zero()));
         }
         // it's safe to unwrap here because we made sure with the regex that
         // the session key is a valid strind
@@ -146,7 +150,9 @@ impl FromRequest for SrsSession {
         let session_key = SessionKey::from_bearer_token(header);
 
         if session_key.is_ok() {
-            let session = SrsSession { session_key: Some(session_key.unwrap()) };
+            let session = SrsSession {
+                session_key: Some(session_key.unwrap()),
+            };
             ready(Ok(session))
         } else {
             ready(Ok(SrsSession::zero()))

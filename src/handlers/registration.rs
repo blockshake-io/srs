@@ -3,7 +3,13 @@ use redis::Commands;
 use regex::Regex;
 use std::sync::Arc;
 
-use crate::{error::Cause, serialization, util, AppState, Error, KsfParams, Result, session::SessionKey, redis::{ToRedisKey, NS_PENDING_REGISTRATION}};
+use crate::{
+    error::Cause,
+    redis::{ToRedisKey, NS_PENDING_REGISTRATION},
+    serialization,
+    session::SessionKey,
+    util, AppState, Error, KsfParams, Result,
+};
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,
 };
@@ -98,7 +104,11 @@ pub async fn register_step1(
         username: request.client_identity.clone(),
     })?;
     let mut client = state.redis.get_connection()?;
-    client.set_ex(response.session_id.to_redis_key(NS_PENDING_REGISTRATION), pending_registration, PENDING_REGISTRATION_TTL_SEC)?;
+    client.set_ex(
+        response.session_id.to_redis_key(NS_PENDING_REGISTRATION),
+        pending_registration,
+        PENDING_REGISTRATION_TTL_SEC,
+    )?;
 
     Ok(response)
 }
@@ -131,7 +141,10 @@ impl Responder for RegisterStep2Response {
     }
 }
 
-fn get_pending_registration(session_id: &str, redis: &redis::Client) -> Result<PendingRegistration> {
+fn get_pending_registration(
+    session_id: &str,
+    redis: &redis::Client,
+) -> Result<PendingRegistration> {
     let mut client = redis.get_connection()?;
     let pending_login: String = client.get_del(session_id.to_redis_key(NS_PENDING_REGISTRATION))?;
     let pending_login: PendingRegistration = serde_json::from_str(&pending_login)?;
@@ -143,8 +156,8 @@ pub async fn register_step2(
     data: web::Json<RegisterStep2Request>,
 ) -> Result<RegisterStep2Response> {
     // check & delete pending registration
-    let pending_registration = get_pending_registration(&data.session_id, &state.redis).map_err(|_|
-        Error {
+    let pending_registration =
+        get_pending_registration(&data.session_id, &state.redis).map_err(|_| Error {
             status: StatusCode::BAD_REQUEST.as_u16(),
             code: crate::error::ErrorCode::ValidationError,
             message: "could not find session".to_owned(),
@@ -155,23 +168,24 @@ pub async fn register_step2(
     let client = state.db.get().await?;
     let stmt = include_str!("../../db/queries/user_create.sql");
     let stmt = client.prepare(stmt).await?;
-    client.query(
-        &stmt,
-        &[
-            &pending_registration.username,
-            &util::b64_encode(&data.masking_key),
-            &util::b64_encode(&data.client_public_key.serialize()[..]),
-            &util::b64_encode(&data.envelope.serialize()),
-            &util::b64_encode(&data.payload.serialize()?[..]),
-        ],
-    )
-    .await
-    .map_err(|e| Error {
-        status: StatusCode::BAD_REQUEST.as_u16(),
-        code: crate::error::ErrorCode::UsernameTakenError,
-        message: format!("username '{}' is taken", &pending_registration.username),
-        cause: Some(Cause::DbError(e)),
-    })?;
+    client
+        .query(
+            &stmt,
+            &[
+                &pending_registration.username,
+                &util::b64_encode(&data.masking_key),
+                &util::b64_encode(&data.client_public_key.serialize()[..]),
+                &util::b64_encode(&data.envelope.serialize()),
+                &util::b64_encode(&data.payload.serialize()?[..]),
+            ],
+        )
+        .await
+        .map_err(|e| Error {
+            status: StatusCode::BAD_REQUEST.as_u16(),
+            code: crate::error::ErrorCode::UsernameTakenError,
+            message: format!("username '{}' is taken", &pending_registration.username),
+            cause: Some(Cause::DbError(e)),
+        })?;
 
     Ok(RegisterStep2Response { success: true })
 }

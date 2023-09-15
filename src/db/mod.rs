@@ -1,16 +1,15 @@
 use srs_opaque::messages::RegistrationRecord;
 
-use crate::{error::ErrorCode::MissingRecordError, Error, KsfParams, Result, serialization, UserId};
+use crate::{
+    error::ErrorCode::MissingRecordError, serialization, Error, KsfParams, Result, UserId,
+};
 
 pub struct User {
     pub id: UserId,
     pub registration_record: RegistrationRecord<KsfParams>,
 }
 
-pub async fn select_user_by_username(
-    db: &deadpool_postgres::Pool,
-    username: &str,
-) -> Result<User> {
+pub async fn select_user_by_username(db: &deadpool_postgres::Pool, username: &str) -> Result<User> {
     let client = db.get().await?;
     let query = include_str!("../../db/queries/registration_record_select.sql");
     let result = client
@@ -35,5 +34,8 @@ pub async fn select_user_by_username(
         payload: serialization::b64_payload::decode(row.get("payload"))?,
     };
 
-    Ok(User { id, registration_record, })
+    Ok(User {
+        id,
+        registration_record,
+    })
 }
