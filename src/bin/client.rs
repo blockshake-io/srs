@@ -180,7 +180,9 @@ fn login(username: &str, password: &str) -> Result<()> {
     }
 
     let response: LoginStep2Response = serde_json::from_str(&resp.text()?).unwrap();
-    println!("Login successful, session key: {}", response.session_key);
+    println!("Login successful");
+    println!("session key: {}", response.session_key.as_str());
+    println!("session expiration: {}", response.session_expiration);
 
     println!("[PHASE 3] testing login");
     let request = serde_json::to_string(&request2)?;
@@ -188,7 +190,10 @@ fn login(username: &str, password: &str) -> Result<()> {
     let resp = client
         .get("http://localhost:8080/api/login/test")
         .header("Content-Type", "application/json")
-        .header("Authorization", format!("Bearer {}", response.session_key))
+        .header(
+            "Authorization",
+            format!("Bearer {}", response.session_key.as_str()),
+        )
         .body(request)
         .send()?;
     if resp.status().is_success() {

@@ -1,6 +1,7 @@
 use std::future::{ready, Ready};
 
 use actix_web::{dev::Payload, FromRequest, HttpRequest};
+use chrono::Duration;
 use rand::{distributions::Alphanumeric, rngs::OsRng, Rng};
 use redis::Commands;
 use regex::Regex;
@@ -18,10 +19,8 @@ lazy_static! {
 
 const STR_AUTHORIZATION: &str = "Authorization";
 
-#[derive(Debug)]
-pub struct SessionKey {
-    key: String,
-}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionKey(String);
 
 impl SessionKey {
     /// Extracts a session key from the value of an Authorization header
@@ -29,7 +28,7 @@ impl SessionKey {
     pub fn from_bearer_token(input: &str) -> crate::Result<SessionKey> {
         if let Some(caps) = SESSION_KEY_REGEX.captures(input) {
             let session_key = caps["session_key"].to_owned();
-            Ok(SessionKey { key: session_key })
+            Ok(SessionKey(session_key))
         } else {
             Err(Error {
                 status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
@@ -53,27 +52,26 @@ impl SessionKey {
 
         // These unwraps will never panic because pre-conditions are always verified
         // (i.e. length and character set)
-        SessionKey {
-            key: String::from_utf8(value).unwrap(),
-        }
+        SessionKey(String::from_utf8(value).unwrap())
     }
 
     pub fn to_str(&self) -> String {
-        self.key.clone()
+        self.0.clone()
     }
 
     pub fn as_str(&self) -> &str {
-        &self.key
+        &self.0
     }
 
     pub fn to_redis_key(&self) -> String {
-        self.key.to_redis_key(NS_SESSION)
+        self.0.to_redis_key(NS_SESSION)
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionData {
-    user_id: UserId,
+    pub key: SessionKey,
+    pub user_id: UserId,
 }
 
 impl SessionData {
@@ -90,41 +88,54 @@ pub struct SrsSession {
     session_key: Option<SessionKey>,
 }
 
-// TODO: should we add an expiration date to this token?
-// see https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#session-expiration
 impl SrsSession {
     pub fn zero() -> SrsSession {
         SrsSession { session_key: None }
     }
 
-    pub fn create(user_id: &UserId, conn: &mut redis::Connection) -> crate::Result<SrsSession> {
+    pub fn create(
+        conn: &mut redis::Connection,
+        user_id: &UserId,
+        ttl: &Duration,
+    ) -> crate::Result<SessionData> {
         let session_key = SessionKey::random();
-        let session_data = SessionData { user_id: *user_id };
-        // TODO: expire the session after some time
-        conn.set(session_key.to_redis_key(), session_data.to_json()?)?;
-        Ok(SrsSession {
-            session_key: Some(session_key),
-        })
+        let session_data = SessionData {
+            key: session_key,
+            user_id: *user_id,
+        };
+        conn.set_ex(
+            session_data.key.to_redis_key(),
+            session_data.to_json()?,
+            ttl.num_seconds() as usize,
+        )?;
+        Ok(session_data)
     }
 
-    pub fn data(&self, conn: &mut redis::Connection) -> Option<SessionData> {
-        if self.session_key.is_none() {
-            return None;
+    pub fn delete(session: &SessionData, conn: &mut redis::Connection) -> crate::Result<()> {
+        conn.del(session.key.to_redis_key())?;
+        Ok(())
+    }
+
+    pub fn check_authenticated(&self, conn: &mut redis::Connection) -> crate::Result<SessionData> {
+        let session_key = self.session_key.as_ref().ok_or_else(|| err401())?;
+        let result: String = conn.get(session_key.to_redis_key()).map_err(|_| err401())?;
+        SessionData::from_json(&result).map_err(|_| err401())
+    }
+
+    pub fn check_unauthenticated(&self, conn: &mut redis::Connection) -> crate::Result<()> {
+        match self.check_authenticated(conn) {
+            Ok(_) => Err(err401()),
+            Err(_) => Ok(()),
         }
-        let key = self.session_key.as_ref().unwrap();
-        let result: Result<String, _> = conn.get(key.to_redis_key());
-        if result.is_err() {
-            return None;
-        }
-        SessionData::from_json(&result.unwrap()).ok()
     }
+}
 
-    pub fn is_authenticated(&self, conn: &mut redis::Connection) -> bool {
-        self.data(conn).is_some()
-    }
-
-    pub fn key(&self) -> Option<&SessionKey> {
-        self.session_key.as_ref()
+fn err401() -> Error {
+    Error {
+        status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
+        code: crate::error::ErrorCode::AuthenticationError,
+        message: "User not authenticated".to_owned(),
+        cause: None,
     }
 }
 

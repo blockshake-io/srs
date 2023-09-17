@@ -1,9 +1,11 @@
 use blstrs::{G2Affine, Gt};
+use chrono::{Duration, FixedOffset, Utc};
 use rand::thread_rng;
 use redis::Commands;
 use std::sync::Arc;
 
 use crate::{
+    constants::{PENDING_LOGIN_TTL_SEC, SESSION_TTL_SEC},
     db,
     redis::{ToRedisKey, NS_PENDING_LOGIN},
     serialization,
@@ -18,10 +20,8 @@ use srs_opaque::{
     ciphersuite::{AuthCode, Bytes, LenMaskedResponse, Nonce},
     keypair::PublicKey,
     messages::{AuthRequest, CredentialRequest, KeyExchange1, KeyExchange2, KeyExchange3},
-    opaque::ServerLoginFlow,
+    opaque::{ServerLoginFlow, ServerLoginState},
 };
-
-const PENDING_LOGIN_TTL_SEC: usize = 60;
 
 #[derive(Serialize, Deserialize)]
 pub struct LoginStep1Request {
@@ -120,8 +120,11 @@ struct PendingLogin {
 
 pub async fn login_step1(
     state: web::Data<Arc<AppState>>,
+    session: SrsSession,
     data: web::Json<LoginStep1Request>,
 ) -> Result<LoginStep1Response> {
+    session.check_unauthenticated(&mut state.redis.get_connection()?)?;
+
     // TODO here we might want to return a dummy record
     let user = db::select_user_by_username(&state.db, &data.username)
         .await
@@ -147,14 +150,14 @@ pub async fn login_step1(
         rng,
     );
 
-    let ke2 = flow.start()?;
+    let (login_state, ke2) = flow.start()?;
     let response = LoginStep1Response::build(&ke2);
 
     let pending_login = serde_json::to_string(&PendingLogin {
         user_id: user.id,
         username: username.clone(),
-        session_key: flow.session_key().unwrap(),
-        expected_client_mac: flow.expected_client_mac().unwrap(),
+        session_key: login_state.session_key,
+        expected_client_mac: login_state.expected_client_mac,
     })?;
     let mut client = state.redis.get_connection()?;
     client.set_ex(
@@ -175,7 +178,9 @@ pub struct LoginStep2Request {
 
 #[derive(Serialize, Deserialize)]
 pub struct LoginStep2Response {
-    pub session_key: String,
+    pub session_key: SessionKey,
+    #[serde(with = "serialization::rfc33339")]
+    pub session_expiration: chrono::DateTime<FixedOffset>,
 }
 
 impl Responder for LoginStep2Response {
@@ -197,8 +202,11 @@ fn get_pending_login(session_id: &str, redis: &redis::Client) -> Result<PendingL
 
 pub async fn login_step2(
     state: web::Data<Arc<AppState>>,
+    session: SrsSession,
     data: web::Json<LoginStep2Request>,
 ) -> Result<LoginStep2Response> {
+    session.check_unauthenticated(&mut state.redis.get_connection()?)?;
+
     let pending_login = get_pending_login(&data.session_id, &state.redis).map_err(|_| Error {
         status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
         code: crate::error::ErrorCode::ValidationError,
@@ -210,21 +218,31 @@ pub async fn login_step2(
         client_mac: data.client_mac,
     };
 
-    // TODO: here we should call flow.finish
-    if ke3.client_mac == pending_login.expected_client_mac {
-        let session =
-            SrsSession::create(&pending_login.user_id, &mut state.redis.get_connection()?)?;
-        Ok(LoginStep2Response {
-            session_key: session.key().unwrap().to_str(),
-        })
-    } else {
-        Err(Error {
-            status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
-            message: "Could not authorize user".to_owned(),
-            code: crate::error::ErrorCode::DeserializationError,
-            cause: None,
-        })
-    }
+    let flow = ServerLoginState {
+        session_key: pending_login.session_key,
+        expected_client_mac: pending_login.expected_client_mac,
+    };
+
+    // finalizes authorization
+    flow.finish(&ke3).map_err(|e| Error {
+        status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
+        message: "Could not authorize user".to_owned(),
+        code: crate::error::ErrorCode::DeserializationError,
+        cause: Some(crate::error::Cause::OpaqueError(e)),
+    })?;
+
+    let session_ttl = Duration::seconds(SESSION_TTL_SEC);
+    let session_expiration =
+        Utc::now().with_timezone(&FixedOffset::east_opt(0).unwrap()) + session_ttl;
+    let session = SrsSession::create(
+        &mut state.redis.get_connection()?,
+        &pending_login.user_id,
+        &session_ttl,
+    )?;
+    Ok(LoginStep2Response {
+        session_key: session.key,
+        session_expiration,
+    })
 }
 
 #[derive(Serialize, Deserialize)]
@@ -246,16 +264,8 @@ pub async fn login_test(
     state: web::Data<Arc<AppState>>,
     session: SrsSession,
 ) -> Result<LoginTestResponse> {
-    if session.is_authenticated(&mut state.redis.get_connection()?) {
-        Ok(LoginTestResponse {
-            body: "success".to_owned(),
-        })
-    } else {
-        Err(Error {
-            status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
-            code: crate::error::ErrorCode::AuthenticationError,
-            message: "User not authenticated".to_owned(),
-            cause: None,
-        })
-    }
+    session.check_authenticated(&mut state.redis.get_connection()?)?;
+    Ok(LoginTestResponse {
+        body: "success".to_owned(),
+    })
 }

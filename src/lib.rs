@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use srs_opaque::{keypair::KeyPair, payload::Payload};
 use typenum::{U20, U4, U8};
 
+mod constants;
 mod db;
 pub mod error;
 pub mod handlers;

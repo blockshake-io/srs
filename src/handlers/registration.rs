@@ -4,10 +4,12 @@ use regex::Regex;
 use std::sync::Arc;
 
 use crate::{
+    constants::PENDING_REGISTRATION_TTL_SEC,
     error::Cause,
     redis::{ToRedisKey, NS_PENDING_REGISTRATION},
     serialization,
     session::SessionKey,
+    session::SrsSession,
     util, AppState, Error, KsfParams, Result,
 };
 use actix_web::{
@@ -27,8 +29,6 @@ lazy_static! {
     static ref USERNAME_REGEX: Regex =
         Regex::new(r"^[a-zA-Z0-9._+-]{3,32}(@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})?$").unwrap();
 }
-
-const PENDING_REGISTRATION_TTL_SEC: usize = 60;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct PendingRegistration {
@@ -84,8 +84,11 @@ impl Responder for RegisterStep1Response {
 
 pub async fn register_step1(
     state: web::Data<Arc<AppState>>,
+    session: SrsSession,
     data: web::Query<RegisterStep1Request>,
 ) -> Result<RegisterStep1Response> {
+    session.check_unauthenticated(&mut state.redis.get_connection()?)?;
+
     if USERNAME_REGEX.captures(&data.username).is_none() {
         return Err(Error {
             status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
@@ -153,8 +156,11 @@ fn get_pending_registration(
 
 pub async fn register_step2(
     state: web::Data<Arc<AppState>>,
+    session: SrsSession,
     data: web::Json<RegisterStep2Request>,
 ) -> Result<RegisterStep2Response> {
+    session.check_unauthenticated(&mut state.redis.get_connection()?)?;
+
     // check & delete pending registration
     let pending_registration =
         get_pending_registration(&data.session_id, &state.redis).map_err(|_| Error {
