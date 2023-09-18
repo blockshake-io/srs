@@ -1,4 +1,3 @@
-use blstrs::{G2Affine, Gt};
 use chrono::{Duration, FixedOffset, Utc};
 use rand::thread_rng;
 use redis::Commands;
@@ -8,7 +7,6 @@ use crate::{
     constants::{PENDING_LOGIN_TTL_SEC, SESSION_TTL_SEC},
     db,
     redis::{ToRedisKey, NS_PENDING_LOGIN},
-    serialization,
     session::{SessionKey, SrsSession},
     AppState, Error, KsfParams, Result, UserId,
 };
@@ -17,85 +15,22 @@ use actix_web::{
 };
 use serde::{Deserialize, Serialize};
 use srs_opaque::{
-    ciphersuite::{AuthCode, Bytes, LenMaskedResponse, Nonce},
-    keypair::PublicKey,
-    messages::{AuthRequest, CredentialRequest, KeyExchange1, KeyExchange2, KeyExchange3},
-    opaque::{ServerLoginFlow, ServerLoginState},
+    messages::{KeyExchange1, KeyExchange2, KeyExchange3},
+    opaque::{ServerLoginFlow, ServerLoginState}, ciphersuite::AuthCode,
+    serialization,
 };
 
 #[derive(Serialize, Deserialize)]
 pub struct LoginStep1Request {
-    pub username: String,
-    #[serde(with = "serialization::b64_g2")]
-    pub blinded_element: G2Affine,
-    #[serde(with = "serialization::b64_nonce")]
-    pub client_nonce: Nonce,
-    #[serde(with = "serialization::b64_public_key")]
-    pub client_public_keyshare: PublicKey,
-}
-
-impl TryInto<KeyExchange1> for LoginStep1Request {
-    type Error = Error;
-
-    fn try_into(self) -> Result<KeyExchange1> {
-        Ok(KeyExchange1 {
-            credential_request: CredentialRequest {
-                blinded_element: self.blinded_element,
-            },
-            auth_request: AuthRequest {
-                client_nonce: self.client_nonce,
-                client_public_keyshare: self.client_public_keyshare,
-            },
-        })
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct _CredentialResponse {
-    #[serde(with = "serialization::b64_gt")]
-    pub evaluated_element: Gt,
-    #[serde(with = "serialization::b64_nonce")]
-    pub masking_nonce: Nonce,
-    #[serde(with = "serialization::b64_masked_response")]
-    pub masked_response: Bytes<LenMaskedResponse>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct _AuthResponse {
-    #[serde(with = "serialization::b64_nonce")]
-    pub server_nonce: Nonce,
-    #[serde(with = "serialization::b64_public_key")]
-    pub server_public_keyshare: PublicKey,
-    #[serde(with = "serialization::b64_auth_code")]
-    pub server_mac: AuthCode,
+    #[serde(rename = "username")]
+    pub client_identity: String,
+    pub key_exchange: KeyExchange1,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LoginStep1Response {
-    pub credential_response: _CredentialResponse,
-    pub auth_response: _AuthResponse,
-    #[serde(with = "serialization::b64_payload")]
-    pub payload: KsfParams,
     pub session_id: String,
-}
-
-impl LoginStep1Response {
-    fn build(ke2: &KeyExchange2<KsfParams>) -> Self {
-        Self {
-            credential_response: _CredentialResponse {
-                evaluated_element: ke2.credential_response.evaluated_element,
-                masking_nonce: ke2.credential_response.masking_nonce,
-                masked_response: ke2.credential_response.masked_response,
-            },
-            auth_response: _AuthResponse {
-                server_nonce: ke2.auth_response.server_nonce,
-                server_public_keyshare: ke2.auth_response.server_public_keyshare,
-                server_mac: ke2.auth_response.server_mac,
-            },
-            payload: ke2.payload,
-            session_id: SessionKey::random().to_str(),
-        }
-    }
+    pub key_exchange: KeyExchange2<KsfParams>,
 }
 
 impl Responder for LoginStep1Response {
@@ -111,7 +46,7 @@ impl Responder for LoginStep1Response {
 #[derive(Debug, Serialize, Deserialize)]
 struct PendingLogin {
     user_id: UserId,
-    username: String,
+    client_identity: String,
     #[serde(with = "serialization::b64_auth_code")]
     session_key: AuthCode,
     #[serde(with = "serialization::b64_auth_code")]
@@ -126,7 +61,7 @@ pub async fn login_step1(
     session.check_unauthenticated(&mut state.redis.get_connection()?)?;
 
     // TODO here we might want to return a dummy record
-    let user = db::select_user_by_username(&state.db, &data.username)
+    let user = db::select_user_by_username(&state.db, &data.client_identity)
         .await
         .map_err(|_| Error {
             status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
@@ -135,8 +70,7 @@ pub async fn login_step1(
             cause: None,
         })?;
 
-    let username = data.username.clone();
-    let ke1: KeyExchange1 = data.into_inner().try_into()?;
+    let client_identity = data.client_identity.clone();
 
     let rng = thread_rng();
     let mut flow = ServerLoginFlow::new(
@@ -145,17 +79,20 @@ pub async fn login_step1(
         &state.ke_keypair,
         &user.registration_record,
         &state.oprf_key,
-        &ke1,
-        &username,
+        &data.key_exchange,
+        &client_identity,
         rng,
     );
 
     let (login_state, ke2) = flow.start()?;
-    let response = LoginStep1Response::build(&ke2);
+    let response = LoginStep1Response {
+        key_exchange: ke2,
+        session_id: SessionKey::random().to_str(),
+    };
 
     let pending_login = serde_json::to_string(&PendingLogin {
         user_id: user.id,
-        username: username.clone(),
+        client_identity: client_identity.clone(),
         session_key: login_state.session_key,
         expected_client_mac: login_state.expected_client_mac,
     })?;
@@ -172,14 +109,13 @@ pub async fn login_step1(
 #[derive(Serialize, Deserialize)]
 pub struct LoginStep2Request {
     pub session_id: String,
-    #[serde(with = "serialization::b64_auth_code")]
-    pub client_mac: AuthCode,
+    pub key_exchange: KeyExchange3,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct LoginStep2Response {
     pub session_key: SessionKey,
-    #[serde(with = "serialization::rfc33339")]
+    #[serde(with = "crate::serialization::rfc33339")]
     pub session_expiration: chrono::DateTime<FixedOffset>,
 }
 
@@ -214,17 +150,13 @@ pub async fn login_step2(
         cause: None,
     })?;
 
-    let ke3 = KeyExchange3 {
-        client_mac: data.client_mac,
-    };
-
     let flow = ServerLoginState {
         session_key: pending_login.session_key,
         expected_client_mac: pending_login.expected_client_mac,
     };
 
     // finalizes authorization
-    flow.finish(&ke3).map_err(|e| Error {
+    flow.finish(&data.key_exchange).map_err(|e| Error {
         status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
         message: "Could not authorize user".to_owned(),
         code: crate::error::ErrorCode::DeserializationError,

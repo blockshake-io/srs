@@ -30,7 +30,7 @@ pub struct AppState {
     pub redis: ::redis::Client,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct KsfParams {
     pub m_cost: u32,
     pub t_cost: u32,
@@ -41,7 +41,7 @@ pub struct KsfParams {
 impl Payload for KsfParams {
     type Len = U20;
 
-    fn serialize(
+    fn to_bytes(
         &self,
     ) -> std::result::Result<GenericArray<u8, Self::Len>, srs_opaque::error::Error> {
         use generic_array::sequence::Concat;
@@ -56,7 +56,7 @@ impl Payload for KsfParams {
         Ok(m_cost.concat(t_cost).concat(p_cost).concat(output_len))
     }
 
-    fn deserialize(
+    fn from_bytes(
         buf: &GenericArray<u8, Self::Len>,
     ) -> std::result::Result<Self, srs_opaque::error::Error>
     where

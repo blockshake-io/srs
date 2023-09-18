@@ -99,7 +99,7 @@ async fn main() -> Result<()> {
             .app_data(web::Data::new(app_state.clone()))
             .service(
                 web::scope("/api")
-                    .route("register/step1", web::get().to(register_step1))
+                    .route("register/step1", web::post().to(register_step1))
                     .route("register/step2", web::post().to(register_step2))
                     .route("login/step1", web::post().to(login_step1))
                     .route("login/step2", web::post().to(login_step2))

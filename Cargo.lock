@@ -1959,6 +1959,7 @@ dependencies = [
  "hkdf",
  "hmac",
  "rand",
+ "serde",
  "sha2",
  "typenum",
  "zeroize",

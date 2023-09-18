@@ -1,4 +1,3 @@
-use blstrs::{G2Affine, Gt};
 use redis::Commands;
 use regex::Regex;
 use std::sync::Arc;
@@ -7,7 +6,6 @@ use crate::{
     constants::PENDING_REGISTRATION_TTL_SEC,
     error::Cause,
     redis::{ToRedisKey, NS_PENDING_REGISTRATION},
-    serialization,
     session::SessionKey,
     session::SrsSession,
     util, AppState, Error, KsfParams, Result,
@@ -18,9 +16,7 @@ use actix_web::{
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use srs_opaque::{
-    ciphersuite::Digest,
-    keypair::PublicKey,
-    messages::{Envelope, RegistrationRequest, RegistrationResponse},
+    messages::{RegistrationRequest, RegistrationResponse, RegistrationRecord},
     opaque::ServerRegistrationFlow,
     payload::Payload,
 };
@@ -35,41 +31,10 @@ struct PendingRegistration {
     username: String,
 }
 
-#[derive(Deserialize)]
-pub struct RegisterStep1Request {
-    pub username: String,
-    #[serde(with = "serialization::b64_g2")]
-    pub blinded_element: G2Affine,
-}
-
-impl TryInto<RegistrationRequest> for RegisterStep1Request {
-    type Error = Error;
-
-    fn try_into(self) -> Result<RegistrationRequest> {
-        Ok(RegistrationRequest {
-            blinded_element: self.blinded_element,
-            client_identity: self.username,
-        })
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegisterStep1Response {
-    #[serde(with = "serialization::b64_gt")]
-    pub evaluated_element: Gt,
-    #[serde(with = "serialization::b64_public_key")]
-    pub server_public_key: PublicKey,
+    pub registration_response: RegistrationResponse,
     pub session_id: String,
-}
-
-impl RegisterStep1Response {
-    fn build(response: &RegistrationResponse) -> Result<Self> {
-        Ok(Self {
-            evaluated_element: response.evaluated_element,
-            server_public_key: response.server_public_key,
-            session_id: SessionKey::random().to_str(),
-        })
-    }
 }
 
 impl Responder for RegisterStep1Response {
@@ -85,11 +50,11 @@ impl Responder for RegisterStep1Response {
 pub async fn register_step1(
     state: web::Data<Arc<AppState>>,
     session: SrsSession,
-    data: web::Query<RegisterStep1Request>,
+    data: web::Json<RegistrationRequest>,
 ) -> Result<RegisterStep1Response> {
     session.check_unauthenticated(&mut state.redis.get_connection()?)?;
 
-    if USERNAME_REGEX.captures(&data.username).is_none() {
+    if USERNAME_REGEX.captures(&data.client_identity).is_none() {
         return Err(Error {
             status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
             message: "Could not validate username".to_owned(),
@@ -98,11 +63,14 @@ pub async fn register_step1(
         });
     }
 
-    let request = data.into_inner().try_into()?;
+    let request = data.into_inner();
     let flow = ServerRegistrationFlow::new(&state.oprf_key, &state.ke_keypair.public_key);
-    let response = flow.start(&request);
-    let response = RegisterStep1Response::build(&response)?;
+    let response = RegisterStep1Response {
+        registration_response: flow.start(&request),
+        session_id: SessionKey::random().to_str(),
+    };
 
+    // remember pending registration
     let pending_registration = serde_json::to_string(&PendingRegistration {
         username: request.client_identity.clone(),
     })?;
@@ -116,16 +84,9 @@ pub async fn register_step1(
     Ok(response)
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RegisterStep2Request {
-    #[serde(with = "serialization::b64_envelope")]
-    pub envelope: Envelope,
-    #[serde(with = "serialization::b64_digest")]
-    pub masking_key: Digest,
-    #[serde(with = "serialization::b64_public_key")]
-    pub client_public_key: PublicKey,
-    #[serde(with = "serialization::b64_payload")]
-    pub payload: KsfParams,
+    pub registration_record: RegistrationRecord<KsfParams>,
     pub session_id: String,
 }
 
@@ -179,10 +140,10 @@ pub async fn register_step2(
             &stmt,
             &[
                 &pending_registration.username,
-                &util::b64_encode(&data.masking_key),
-                &util::b64_encode(&data.client_public_key.serialize()[..]),
-                &util::b64_encode(&data.envelope.serialize()),
-                &util::b64_encode(&data.payload.serialize()?[..]),
+                &util::b64_encode(&data.registration_record.masking_key),
+                &util::b64_encode(&data.registration_record.client_public_key.serialize()[..]),
+                &util::b64_encode(&data.registration_record.envelope.serialize()),
+                &util::b64_encode(&data.registration_record.payload.to_bytes()?[..]),
             ],
         )
         .await

@@ -1,8 +1,9 @@
 use srs_opaque::messages::RegistrationRecord;
 
 use crate::{
-    error::ErrorCode::MissingRecordError, serialization, Error, KsfParams, Result, UserId,
+    error::ErrorCode::MissingRecordError, Error, KsfParams, Result, UserId,
 };
+use srs_opaque::serialization;
 
 pub struct User {
     pub id: UserId,
@@ -31,7 +32,7 @@ pub async fn select_user_by_username(db: &deadpool_postgres::Pool, username: &st
         envelope: serialization::b64_envelope::decode(row.get("envelope"))?,
         masking_key: serialization::b64_digest::decode(row.get("masking_key"))?,
         client_public_key: serialization::b64_public_key::decode(row.get("client_public_key"))?,
-        payload: serialization::b64_payload::decode(row.get("payload"))?,
+        payload: crate::serialization::b64_payload::decode(row.get("payload"))?,
     };
 
     Ok(User {
