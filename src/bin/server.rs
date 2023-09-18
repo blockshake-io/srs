@@ -10,6 +10,7 @@ use srs_indexer::{
     error::ErrorCode::MissingParameterError,
     handlers::{
         login::{login_step1, login_step2, login_test},
+        logout::logout,
         registration::{register_step1, register_step2},
     },
     serialization, AppState, Error, Result,
@@ -102,7 +103,8 @@ async fn main() -> Result<()> {
                     .route("register/step2", web::post().to(register_step2))
                     .route("login/step1", web::post().to(login_step1))
                     .route("login/step2", web::post().to(login_step2))
-                    .route("login/test", web::get().to(login_test)),
+                    .route("login/test", web::get().to(login_test))
+                    .route("logout", web::get().to(logout)),
             )
     })
     .bind((server_config.srv_address, server_config.srv_port))?
