@@ -1,3 +1,4 @@
+use blstrs::G2Affine;
 use redis::Commands;
 use regex::Regex;
 use std::sync::Arc;
@@ -31,6 +32,13 @@ struct PendingRegistration {
     username: String,
 }
 
+#[derive(Deserialize)]
+pub struct RegisterStep1Request {
+    pub username: String,
+    #[serde(with = "srs_opaque::serialization::b64_g2")]
+    pub blinded_element: G2Affine,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegisterStep1Response {
     pub registration_response: RegistrationResponse,
@@ -50,11 +58,11 @@ impl Responder for RegisterStep1Response {
 pub async fn register_step1(
     state: web::Data<Arc<AppState>>,
     session: SrsSession,
-    data: web::Json<RegistrationRequest>,
+    data: web::Json<RegisterStep1Request>,
 ) -> Result<RegisterStep1Response> {
     session.check_unauthenticated(&mut state.redis.get_connection()?)?;
 
-    if USERNAME_REGEX.captures(&data.client_identity).is_none() {
+    if USERNAME_REGEX.captures(&data.username).is_none() {
         return Err(Error {
             status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
             message: "Could not validate username".to_owned(),
@@ -63,7 +71,11 @@ pub async fn register_step1(
         });
     }
 
-    let request = data.into_inner();
+    let request = RegistrationRequest {
+        client_identity: data.username.clone(),
+        blinded_element: data.blinded_element,
+    };
+
     let flow = ServerRegistrationFlow::new(&state.oprf_key, &state.ke_keypair.public_key);
     let response = RegisterStep1Response {
         registration_response: flow.start(&request),
@@ -72,7 +84,7 @@ pub async fn register_step1(
 
     // remember pending registration
     let pending_registration = serde_json::to_string(&PendingRegistration {
-        username: request.client_identity.clone(),
+        username: data.username.clone(),
     })?;
     let mut client = state.redis.get_connection()?;
     client.set_ex(

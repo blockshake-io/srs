@@ -110,7 +110,7 @@ fn login(username: &str, password: &str) -> Result<()> {
 
     let ke1 = login_flow.start()?;
     let request = LoginStep1Request {
-        client_identity: username.to_owned(),
+        username: username.to_owned(),
         key_exchange: ke1,
     };
 

@@ -22,8 +22,7 @@ use srs_opaque::{
 
 #[derive(Serialize, Deserialize)]
 pub struct LoginStep1Request {
-    #[serde(rename = "username")]
-    pub client_identity: String,
+    pub username: String,
     pub key_exchange: KeyExchange1,
 }
 
@@ -46,7 +45,7 @@ impl Responder for LoginStep1Response {
 #[derive(Debug, Serialize, Deserialize)]
 struct PendingLogin {
     user_id: UserId,
-    client_identity: String,
+    username: String,
     #[serde(with = "serialization::b64_auth_code")]
     session_key: AuthCode,
     #[serde(with = "serialization::b64_auth_code")]
@@ -61,7 +60,7 @@ pub async fn login_step1(
     session.check_unauthenticated(&mut state.redis.get_connection()?)?;
 
     // TODO here we might want to return a dummy record
-    let user = db::select_user_by_username(&state.db, &data.client_identity)
+    let user = db::select_user_by_username(&state.db, &data.username)
         .await
         .map_err(|_| Error {
             status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
@@ -70,7 +69,7 @@ pub async fn login_step1(
             cause: None,
         })?;
 
-    let client_identity = data.client_identity.clone();
+    let client_identity = data.username.clone();
 
     let rng = thread_rng();
     let mut flow = ServerLoginFlow::new(
@@ -92,7 +91,7 @@ pub async fn login_step1(
 
     let pending_login = serde_json::to_string(&PendingLogin {
         user_id: user.id,
-        client_identity: client_identity.clone(),
+        username: client_identity.clone(),
         session_key: login_state.session_key,
         expected_client_mac: login_state.expected_client_mac,
     })?;
