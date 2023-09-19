@@ -3,14 +3,14 @@ use srs_indexer::{
     error::{Cause, ErrorCode},
     handlers::{
         login::{LoginStep1Request, LoginStep1Response, LoginStep2Request, LoginStep2Response},
-        registration::{RegisterStep1Response, RegisterStep2Request},
+        registration::{RegisterStep1Response, RegisterStep2Request, RegisterStep1Request},
     },
     Error, KsfParams, Result,
 };
 use srs_opaque::{
     ciphersuite::Digest,
     keypair::PublicKey,
-    messages::{RegistrationRecord, RegistrationRequest},
+    messages::RegistrationRecord,
     opaque::{ClientLoginFlow, ClientRegistrationFlow},
     primitives::derive_keypair,
 };
@@ -58,8 +58,8 @@ fn register(username: &str, password: &str, server_public_key: &PublicKey) -> Re
     let registration_request = registration_flow.start();
 
     println!("[PHASE 1] connecting to server");
-    let request = serde_json::to_string(&RegistrationRequest {
-        client_identity: registration_request.client_identity.clone(),
+    let request = serde_json::to_string(&RegisterStep1Request {
+        username: registration_request.client_identity.clone(),
         blinded_element: registration_request.blinded_element,
     })?;
     let client = reqwest::blocking::Client::new();

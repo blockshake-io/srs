@@ -69,9 +69,8 @@ pub async fn login_step1(
             cause: None,
         })?;
 
-    let client_identity = data.username.clone();
-
     let rng = thread_rng();
+    let client_identity = data.username.clone();
     let mut flow = ServerLoginFlow::new(
         &state.ke_keypair.public_key,
         Some(&state.identity),
@@ -91,7 +90,7 @@ pub async fn login_step1(
 
     let pending_login = serde_json::to_string(&PendingLogin {
         user_id: user.id,
-        username: client_identity.clone(),
+        username: data.username.clone(),
         session_key: login_state.session_key,
         expected_client_mac: login_state.expected_client_mac,
     })?;

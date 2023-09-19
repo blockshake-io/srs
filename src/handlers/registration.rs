@@ -32,7 +32,7 @@ struct PendingRegistration {
     username: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RegisterStep1Request {
     pub username: String,
     #[serde(with = "srs_opaque::serialization::b64_g2")]
