@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate lazy_static;
 
-use blstrs::Scalar;
 use generic_array::GenericArray;
 use serde::{Deserialize, Serialize};
 use srs_opaque::{keypair::KeyPair, payload::Payload};
@@ -9,6 +8,7 @@ use typenum::{U20, U4, U8};
 
 mod constants;
 mod db;
+mod distributed_oprf;
 pub mod error;
 pub mod handlers;
 mod redis;
@@ -24,10 +24,11 @@ pub struct UserId(u64);
 
 pub struct AppState {
     pub identity: String,
-    pub oprf_key: Scalar,
     pub ke_keypair: KeyPair,
     pub db: deadpool_postgres::Pool,
     pub redis: ::redis::Client,
+    pub oprf_hosts: Vec<String>,
+    pub oprf_threshold: u16,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]

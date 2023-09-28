@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use crate::{
     constants::{PENDING_LOGIN_TTL_SEC, SESSION_TTL_SEC},
-    db,
+    db, distributed_oprf,
     redis::{ToRedisKey, NS_PENDING_LOGIN},
     session::{SessionKey, SrsSession},
     AppState, Error, KsfParams, Result, UserId,
@@ -15,8 +15,9 @@ use actix_web::{
 };
 use serde::{Deserialize, Serialize};
 use srs_opaque::{
+    ciphersuite::AuthCode,
     messages::{KeyExchange1, KeyExchange2, KeyExchange3},
-    opaque::{ServerLoginFlow, ServerLoginState}, ciphersuite::AuthCode,
+    opaque::{ServerLoginFlow, ServerLoginState},
     serialization,
 };
 
@@ -76,13 +77,19 @@ pub async fn login_step1(
         Some(&state.identity),
         &state.ke_keypair,
         &user.registration_record,
-        &state.oprf_key,
         &data.key_exchange,
         &client_identity,
         rng,
     );
 
-    let (login_state, ke2) = flow.start()?;
+    let evaluated_element = distributed_oprf::blind_evaluate(
+        state.get_ref().as_ref(),
+        &data.key_exchange.credential_request.blinded_element,
+        data.username.as_bytes(),
+    )
+    .await?;
+
+    let (login_state, ke2) = flow.start(evaluated_element)?;
     let response = LoginStep1Response {
         key_exchange: ke2,
         session_id: SessionKey::random().to_str(),

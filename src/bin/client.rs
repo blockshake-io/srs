@@ -3,7 +3,7 @@ use srs_indexer::{
     error::{Cause, ErrorCode},
     handlers::{
         login::{LoginStep1Request, LoginStep1Response, LoginStep2Request, LoginStep2Response},
-        registration::{RegisterStep1Response, RegisterStep2Request, RegisterStep1Request},
+        registration::{RegisterStep1Request, RegisterStep1Response, RegisterStep2Request},
     },
     Error, KsfParams, Result,
 };

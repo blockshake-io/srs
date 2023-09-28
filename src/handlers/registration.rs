@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use crate::{
     constants::PENDING_REGISTRATION_TTL_SEC,
+    distributed_oprf,
     error::Cause,
     redis::{ToRedisKey, NS_PENDING_REGISTRATION},
     session::SessionKey,
@@ -17,7 +18,7 @@ use actix_web::{
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use srs_opaque::{
-    messages::{RegistrationRequest, RegistrationResponse, RegistrationRecord},
+    messages::{RegistrationRecord, RegistrationResponse},
     opaque::ServerRegistrationFlow,
     payload::Payload,
 };
@@ -71,14 +72,17 @@ pub async fn register_step1(
         });
     }
 
-    let request = RegistrationRequest {
-        client_identity: data.username.clone(),
-        blinded_element: data.blinded_element,
-    };
+    let flow = ServerRegistrationFlow::new(&state.ke_keypair.public_key);
+    let evaluated_element = distributed_oprf::blind_evaluate(
+        state.get_ref().as_ref(),
+        &data.blinded_element,
+        data.username.as_bytes(),
+    )
+    .await?;
+    let registration_response = flow.start(evaluated_element);
 
-    let flow = ServerRegistrationFlow::new(&state.oprf_key, &state.ke_keypair.public_key);
     let response = RegisterStep1Response {
-        registration_response: flow.start(&request),
+        registration_response,
         session_id: SessionKey::random().to_str(),
     };
 

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use actix_web::{web, App, HttpServer};
-use blstrs::Scalar;
 use config::Config;
 use srs_opaque::primitives::derive_keypair;
 use tokio_postgres::NoTls;
@@ -13,7 +12,7 @@ use srs_indexer::{
         logout::logout,
         registration::{register_step1, register_step2},
     },
-    serialization, AppState, Error, Result,
+    AppState, Error, Result,
 };
 
 use serde::Deserialize;
@@ -22,10 +21,10 @@ pub struct ServerConfig {
     pub srv_identity: String,
     pub srv_address: String,
     pub srv_port: u16,
-    #[serde(with = "serialization::b64_scalar")]
-    pub srv_oprf_key: Scalar,
     pub srv_ke_seed: String,
     pub srv_ke_info: String,
+    pub srv_oprf_hosts: String,
+    pub srv_oprf_threshold: u16,
     pub db_user: Option<String>,
     pub db_password: Option<String>,
     pub db_host: Option<String>,
@@ -63,10 +62,18 @@ async fn main() -> Result<()> {
         server_config.srv_ke_info.as_bytes(),
     )?;
 
+    // the OPRF hosts environment variable is whitespace-separated string of hosts
+    let oprf_hosts: Vec<String> = server_config
+        .srv_oprf_hosts
+        .split_ascii_whitespace()
+        .map(|s| s.to_owned())
+        .collect();
+
     let app_state = Arc::new(AppState {
         identity: server_config.srv_identity,
+        oprf_hosts,
+        oprf_threshold: server_config.srv_oprf_threshold,
         ke_keypair,
-        oprf_key: server_config.srv_oprf_key,
         db: db_config.create_pool(None, NoTls)?,
         redis: redis_client,
     });
