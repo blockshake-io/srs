@@ -8,6 +8,8 @@ use tokio::task;
 
 use crate::{util, AppState, Result};
 
+const USERNAME_OBFUSCATION: &[u8] = b"srs_username_obfuscation";
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BlindEvaluateRequest {
     public_input: String,
@@ -38,7 +40,7 @@ pub async fn blind_evaluate(
     public_input: &[u8],
 ) -> Result<Gt> {
     let obfuscated_public_input =
-        srs_opaque::oprf::evaluate(public_input, &[], &state.username_oprf_key)?;
+        srs_opaque::oprf::evaluate(public_input, USERNAME_OBFUSCATION, &state.username_oprf_key)?;
     let obfuscated_public_input = util::b64_encode(&obfuscated_public_input[..]);
 
     // TODO: do we need to put this in an Arc?
