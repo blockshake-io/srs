@@ -224,8 +224,7 @@ fn main() -> Result<()> {
             let (username, password) = read_username_password()?;
             // TODO: drop key-derivation and read public-key from somewhere
             let server_keypair = derive_keypair(b"foo", b"bar")?;
-            let server_public_key = server_keypair.public_key.clone();
-            register(&username, &password, &server_public_key)?;
+            register(&username, &password, &server_keypair.public_key)?;
         }
         "login" => {
             let (username, password) = read_username_password()?;

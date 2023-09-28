@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use actix_web::{web, App, HttpServer};
+use blstrs::Scalar;
 use config::Config;
 use srs_opaque::primitives::derive_keypair;
 use tokio_postgres::NoTls;
@@ -12,7 +13,7 @@ use srs_indexer::{
         logout::logout,
         registration::{register_step1, register_step2},
     },
-    AppState, Error, Result,
+    serialization, AppState, Error, Result,
 };
 
 use serde::Deserialize;
@@ -25,6 +26,8 @@ pub struct ServerConfig {
     pub srv_ke_info: String,
     pub srv_oprf_hosts: String,
     pub srv_oprf_threshold: u16,
+    #[serde(with = "serialization::b64_scalar")]
+    pub srv_username_oprf_key: Scalar,
     pub db_user: Option<String>,
     pub db_password: Option<String>,
     pub db_host: Option<String>,
@@ -76,6 +79,7 @@ async fn main() -> Result<()> {
         ke_keypair,
         db: db_config.create_pool(None, NoTls)?,
         redis: redis_client,
+        username_oprf_key: server_config.srv_username_oprf_key,
     });
 
     HttpServer::new(move || {

@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
 
+use blstrs::Scalar;
 use generic_array::GenericArray;
 use serde::{Deserialize, Serialize};
 use srs_opaque::{keypair::KeyPair, payload::Payload};
@@ -29,6 +30,7 @@ pub struct AppState {
     pub redis: ::redis::Client,
     pub oprf_hosts: Vec<String>,
     pub oprf_threshold: u16,
+    pub username_oprf_key: Scalar,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]

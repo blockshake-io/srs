@@ -37,10 +37,14 @@ pub async fn blind_evaluate(
     blinded_element: &G2Affine,
     public_input: &[u8],
 ) -> Result<Gt> {
+    let obfuscated_public_input =
+        srs_opaque::oprf::evaluate(public_input, &[], &state.username_oprf_key)?;
+    let obfuscated_public_input = util::b64_encode(&obfuscated_public_input[..]);
+
     // TODO: do we need to put this in an Arc?
     let request = Arc::new(BlindEvaluateRequest {
         blinded_element: *blinded_element,
-        public_input: util::b64_encode(public_input),
+        public_input: obfuscated_public_input,
     });
 
     // initiate relayed requests...
