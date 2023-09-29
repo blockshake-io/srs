@@ -31,6 +31,7 @@ pub enum ErrorCode {
     UsernameTakenError,
     AuthenticationError,
     SessionKeyNotFoundError,
+    RateLimitExceededError,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

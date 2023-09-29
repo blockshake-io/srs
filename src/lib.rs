@@ -12,6 +12,7 @@ mod db;
 mod distributed_oprf;
 pub mod error;
 pub mod handlers;
+mod rate_limiter;
 mod redis;
 pub mod serialization;
 mod session;

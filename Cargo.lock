@@ -1635,6 +1635,8 @@ dependencies = [
  "itoa",
  "percent-encoding",
  "ryu",
+ "serde",
+ "serde_json",
  "sha1_smol",
  "socket2 0.4.9",
  "url",

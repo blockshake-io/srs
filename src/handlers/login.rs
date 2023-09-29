@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use crate::{
     constants::{PENDING_LOGIN_TTL_SEC, SESSION_TTL_SEC},
-    db, distributed_oprf,
+    db, distributed_oprf, rate_limiter,
     redis::{ToRedisKey, NS_PENDING_LOGIN},
     session::{SessionKey, SrsSession},
     AppState, Error, KsfParams, Result, UserId,
@@ -58,7 +58,11 @@ pub async fn login_step1(
     session: SrsSession,
     data: web::Json<LoginStep1Request>,
 ) -> Result<LoginStep1Response> {
-    session.check_unauthenticated(&mut state.redis.get_connection()?)?;
+    let mut redis_conn = state.redis.get_connection()?;
+    // no session must be provided
+    session.check_unauthenticated(&mut redis_conn)?;
+    // login attempts for a given username are rate-limited
+    rate_limiter::check_rate_limit(&mut redis_conn, &data.username)?;
 
     // TODO here we might want to return a dummy record
     let user = db::select_user_by_username(&state.db, &data.username)
