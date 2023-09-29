@@ -3,7 +3,7 @@ use std::future::{ready, Ready};
 use actix_web::{dev::Payload, FromRequest, HttpRequest};
 use chrono::Duration;
 use rand::{distributions::Alphanumeric, rngs::OsRng, Rng};
-use redis::Commands;
+use redis::{Commands, FromRedisValue, ToRedisArgs};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +17,7 @@ lazy_static! {
         Regex::new(r"^Bearer (?P<session_key>[a-zA-Z0-9]{64})$").unwrap();
 }
 
-const STR_AUTHORIZATION: &str = "Authorization";
+const HEADER_AUTHORIZATION: &str = "Authorization";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionKey(String);
@@ -74,13 +74,20 @@ pub struct SessionData {
     pub user_id: UserId,
 }
 
-impl SessionData {
-    fn to_json(&self) -> crate::Result<String> {
-        Ok(serde_json::to_string(self)?)
+impl FromRedisValue for SessionData {
+    fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
+        let v: String = String::from_redis_value(v)?;
+        serde_json::from_str(&v[..]).map_err(|e| e.into())
     }
+}
 
-    fn from_json(input: &str) -> crate::Result<Self> {
-        Ok(serde_json::from_str::<SessionData>(input)?)
+impl ToRedisArgs for SessionData {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + redis::RedisWrite,
+    {
+        let json = serde_json::to_string(&self).expect("session_data can be json-serialized");
+        out.write_arg(json.as_bytes())
     }
 }
 
@@ -105,7 +112,7 @@ impl SrsSession {
         };
         conn.set_ex(
             session_data.key.to_redis_key(),
-            session_data.to_json()?,
+            &session_data,
             ttl.num_seconds() as usize,
         )?;
         Ok(session_data)
@@ -118,8 +125,7 @@ impl SrsSession {
 
     pub fn check_authenticated(&self, conn: &mut redis::Connection) -> crate::Result<SessionData> {
         let session_key = self.session_key.as_ref().ok_or_else(|| err401())?;
-        let result: String = conn.get(session_key.to_redis_key()).map_err(|_| err401())?;
-        SessionData::from_json(&result).map_err(|_| err401())
+        conn.get(session_key.to_redis_key()).map_err(|_| err401())
     }
 
     pub fn check_unauthenticated(&self, conn: &mut redis::Connection) -> crate::Result<()> {
@@ -151,7 +157,7 @@ impl FromRequest for SrsSession {
     type Future = Ready<Result<SrsSession, Self::Error>>;
 
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
-        let header = req.headers().get(STR_AUTHORIZATION);
+        let header = req.headers().get(HEADER_AUTHORIZATION);
         if header.is_none() {
             return ready(Ok(SrsSession::zero()));
         }
