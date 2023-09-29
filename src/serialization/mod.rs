@@ -25,34 +25,6 @@ pub mod b64_payload {
     }
 }
 
-pub mod b64_scalar {
-    use crate::util;
-
-    use blstrs::Scalar;
-    use generic_array::GenericArray;
-    use serde::{Deserialize, Serialize};
-    use serde::{Deserializer, Serializer};
-
-    use typenum::U32;
-
-    pub fn serialize<S: Serializer>(v: &Scalar, s: S) -> Result<S::Ok, S::Error> {
-        let b64 = util::b64_encode(&v.to_bytes_be());
-        String::serialize(&b64, s)
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Scalar, D::Error> {
-        let buf: GenericArray<u8, U32> = util::b64_decode(&String::deserialize(d)?)
-            .map_err(|_| serde::de::Error::custom("Deserialization error for scalar"))?;
-        let buf: [u8; 32] = buf.try_into().unwrap();
-        let scalar = Scalar::from_bytes_be(&buf);
-        if bool::from(scalar.is_some()) {
-            Ok(scalar.unwrap())
-        } else {
-            Err(serde::de::Error::custom("Could not parse BLS12-381 scalar"))
-        }
-    }
-}
-
 pub mod rfc33339 {
     use chrono::{DateTime, FixedOffset};
     use serde::{Deserialize, Serialize};

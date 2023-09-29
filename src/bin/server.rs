@@ -3,7 +3,7 @@ use std::sync::Arc;
 use actix_web::{web, App, HttpServer};
 use blstrs::Scalar;
 use config::Config;
-use srs_opaque::primitives::derive_keypair;
+use srs_opaque::{primitives::derive_keypair, serialization};
 use tokio_postgres::NoTls;
 
 use srs_indexer::{
@@ -13,10 +13,11 @@ use srs_indexer::{
         logout::logout,
         registration::{register_step1, register_step2},
     },
-    serialization, AppState, Error, Result,
+    AppState, Error, Result,
 };
 
 use serde::Deserialize;
+
 #[derive(Debug, Default, Deserialize)]
 pub struct ServerConfig {
     pub srv_identity: String,
