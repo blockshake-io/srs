@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
+use actix_web::http::StatusCode;
 use blstrs::{G2Affine, Gt};
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use srs_opaque::shamir::{self, EvaluatedElement};
 use tokio::task;
 
-use crate::{util, AppState, Result};
+use crate::{error::ErrorCode, util, AppState, Error, Result};
 
 const USERNAME_OBFUSCATION: &[u8] = b"srs_username_obfuscation";
 
@@ -20,18 +21,21 @@ pub struct BlindEvaluateRequest {
 async fn relay_request(
     host: String,
     request: Arc<BlindEvaluateRequest>,
-) -> Option<EvaluatedElement> {
+) -> std::result::Result<EvaluatedElement, u16> {
+    let e500 = StatusCode::INTERNAL_SERVER_ERROR.as_u16();
     let resp = reqwest::Client::new()
         .post(format!("{}/api/blind-evaluate", host))
         .header("Content-Type", "application/json")
-        .body(serde_json::to_string(request.as_ref()).ok()?)
+        .json(request.as_ref())
         .send()
         .await
-        .ok()?
-        .text()
-        .await
-        .ok()?;
-    serde_json::from_str(&resp[..]).ok()
+        .map_err(|_| e500)?;
+
+    if resp.status().is_success() {
+        Ok(resp.json().await.map_err(|_| e500)?)
+    } else {
+        Err(resp.status().as_u16())
+    }
 }
 
 pub async fn blind_evaluate(
@@ -61,17 +65,36 @@ pub async fn blind_evaluate(
     let responses = join_all(futures).await;
 
     let mut results = vec![];
+    let mut rate_limited_requests = 0;
+
     for response in responses {
-        if response.is_err() {
-            continue;
-        }
-        match response.unwrap() {
-            Some(r) => results.push(r),
-            None => continue,
+        if let Ok(response) = response {
+            match response {
+                Ok(r) => results.push(r),
+                Err(status) => {
+                    if status == StatusCode::TOO_MANY_REQUESTS.as_u16() {
+                        rate_limited_requests += 1;
+                    }
+                }
+            }
         }
     }
 
-    let aggregated_element = shamir::lagrange_interpolation(state.oprf_threshold, &results)?;
+    // if there weren't enough successful requests to recvoer the secret,
+    // but there were enough rate-limited requests, we report rate-limiting
+    // as error
+    let threshold = state.oprf_threshold as usize;
+    if results.len() < threshold && rate_limited_requests >= threshold {
+        return Err(Error {
+            status: StatusCode::TOO_MANY_REQUESTS.as_u16(),
+            message: "rate limit exceeded".to_owned(),
+            code: ErrorCode::RateLimitExceededError,
+            cause: None,
+        });
+    }
 
-    Ok(aggregated_element)
+    Ok(shamir::lagrange_interpolation(
+        state.oprf_threshold,
+        &results,
+    )?)
 }
