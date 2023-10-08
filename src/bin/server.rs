@@ -34,6 +34,7 @@ pub struct ServerConfig {
     pub srv_oprf_threshold: u16,
     #[serde(with = "serialization::b64_scalar")]
     pub srv_username_oprf_key: Scalar,
+    pub srv_fake_ksf_params: String,
     pub db_user: Option<String>,
     pub db_password: Option<String>,
     pub db_host: Option<String>,
@@ -107,6 +108,7 @@ async fn main() -> Result<()> {
         db: db_config.create_pool(None, NoTls)?,
         redis: redis_client,
         username_oprf_key: server_config.srv_username_oprf_key,
+        fake_ksf_configs: serde_json::from_str(&server_config.srv_fake_ksf_params)?,
     });
 
     HttpServer::new(move || {

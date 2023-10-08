@@ -1,7 +1,6 @@
-use blstrs::Scalar;
 use chrono::{Duration, FixedOffset, Utc};
 use log::warn;
-use rand::thread_rng;
+use rand::{seq::SliceRandom, thread_rng};
 use redis::Commands;
 use std::sync::Arc;
 
@@ -81,7 +80,7 @@ pub async fn login_step1(
                     "login-attempt for non-existing user '{}', using fake record",
                     data.username
                 );
-                create_fake_user(&data.username, &state.username_oprf_key)?
+                create_fake_user(&data.username, &state)?
             }
             _ => return Err(e),
         },
@@ -224,16 +223,24 @@ pub async fn login_test(
     })
 }
 
-fn create_fake_user(username: &str, oprf_key: &Scalar) -> Result<User> {
-    let seed = srs_opaque::oprf::evaluate(username.as_bytes(), USERNAME_OBFUSCATION, oprf_key)?;
-    let mut rng = crypto_rng_from_seed(&seed[..]);
-    let default_ksf = KsfParams {
-        m_cost: 8192,
-        p_cost: 1,
-        t_cost: 10,
-        output_len: None,
-    };
-    let record = RegistrationRecord::<KsfParams>::fake(&mut rng, default_ksf);
+fn create_fake_user(username: &str, state: &AppState) -> Result<User> {
+    let mut rng = crypto_rng_from_seed(
+        &srs_opaque::oprf::evaluate(
+            username.as_bytes(),
+            USERNAME_OBFUSCATION,
+            &state.username_oprf_key,
+        )?[..],
+    );
+    let fake_ksf = state
+        .fake_ksf_configs
+        .choose(&mut rng)
+        .ok_or_else(|| Error {
+            status: actix_web::http::StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+            code: ErrorCode::InternalError,
+            message: "No default KSF parameters found".to_owned(),
+            cause: None,
+        })?;
+    let record = RegistrationRecord::<KsfParams>::fake(&mut rng, fake_ksf.clone());
     Ok(User {
         id: UserId(0),
         registration_record: record,

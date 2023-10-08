@@ -32,6 +32,7 @@ pub struct AppState {
     pub oprf_hosts: Vec<String>,
     pub oprf_threshold: u16,
     pub username_oprf_key: Scalar,
+    pub fake_ksf_configs: Vec<KsfParams>,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
