@@ -147,6 +147,9 @@ pub async fn register_step2(
             cause: None,
         })?;
 
+    // TODO: should we slow down the the request if the username is taken
+    // to prevent user enumeration attacks?
+
     // check & insert new user
     let client = state.db.get().await?;
     let stmt = include_str!("../../db/queries/user_create.sql");

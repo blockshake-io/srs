@@ -21,7 +21,7 @@ pub enum Cause {
     RedisError(redis::RedisError),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum ErrorCode {
     MissingParameterError,
     MissingRecordError,
@@ -41,17 +41,6 @@ pub struct Error {
     pub message: String,
     #[serde(skip)]
     pub cause: Option<Cause>,
-}
-
-impl Error {
-    pub fn custom(status: u16, code: ErrorCode, message: String) -> Self {
-        Error {
-            status,
-            code,
-            message,
-            cause: None,
-        }
-    }
 }
 
 impl std::fmt::Display for Error {

@@ -1,13 +1,18 @@
+use blstrs::Scalar;
 use chrono::{Duration, FixedOffset, Utc};
 use rand::thread_rng;
 use redis::Commands;
 use std::sync::Arc;
 
 use crate::{
-    constants::{PENDING_LOGIN_TTL_SEC, SESSION_TTL_SEC},
-    db, distributed_oprf, rate_limiter,
+    constants::{PENDING_LOGIN_TTL_SEC, SESSION_TTL_SEC, USERNAME_OBFUSCATION},
+    db::{self, User},
+    distributed_oprf,
+    error::ErrorCode,
+    rate_limiter,
     redis::{ToRedisKey, NS_PENDING_LOGIN},
     session::{SessionKey, SrsSession},
+    util::crypto_rng_from_seed,
     AppState, Error, KsfParams, Result, UserId,
 };
 use actix_web::{
@@ -16,7 +21,7 @@ use actix_web::{
 use serde::{Deserialize, Serialize};
 use srs_opaque::{
     ciphersuite::AuthCode,
-    messages::{KeyExchange1, KeyExchange2, KeyExchange3},
+    messages::{KeyExchange1, KeyExchange2, KeyExchange3, RegistrationRecord},
     opaque::{ServerLoginFlow, ServerLoginState},
     serialization,
 };
@@ -64,15 +69,18 @@ pub async fn login_step1(
     // login attempts for a given username are rate-limited
     rate_limiter::check_rate_limit(&mut redis_conn, &data.username)?;
 
-    // TODO here we might want to return a dummy record
-    let user = db::select_user_by_username(&state.db, &data.username)
-        .await
-        .map_err(|_| Error {
-            status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
-            code: crate::error::ErrorCode::MissingRecordError,
-            message: "Could not find record".to_owned(),
-            cause: None,
-        })?;
+    // we fetch the user from the DB. if the user doesn't exist we create
+    // a temporary fake user to prevent user enumeration attacks, see
+    // the OPAQUE standard
+    let user = match db::select_user_by_username(&state.db, &data.username).await {
+        Ok(u) => u,
+        Err(e) => match e.code {
+            ErrorCode::MissingRecordError => {
+                create_fake_user(&data.username, &state.username_oprf_key)?
+            }
+            _ => return Err(e),
+        },
+    };
 
     let rng = thread_rng();
     let client_identity = data.username.clone();
@@ -208,5 +216,21 @@ pub async fn login_test(
     session.check_authenticated(&mut state.redis.get_connection()?)?;
     Ok(LoginTestResponse {
         body: "success".to_owned(),
+    })
+}
+
+fn create_fake_user(username: &str, oprf_key: &Scalar) -> Result<User> {
+    let seed = srs_opaque::oprf::evaluate(username.as_bytes(), USERNAME_OBFUSCATION, oprf_key)?;
+    let mut rng = crypto_rng_from_seed(&seed[..]);
+    let default_ksf = KsfParams {
+        m_cost: 8192,
+        p_cost: 1,
+        t_cost: 10,
+        output_len: None,
+    };
+    let record = RegistrationRecord::<KsfParams>::fake(&mut rng, default_ksf);
+    Ok(User {
+        id: UserId(0),
+        registration_record: record,
     })
 }

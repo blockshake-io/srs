@@ -7,9 +7,7 @@ use serde::{Deserialize, Serialize};
 use srs_opaque::shamir::{self, EvaluatedElement};
 use tokio::task;
 
-use crate::{error::ErrorCode, util, AppState, Error, Result};
-
-const USERNAME_OBFUSCATION: &[u8] = b"srs_username_obfuscation";
+use crate::{constants::USERNAME_OBFUSCATION, error::ErrorCode, util, AppState, Error, Result};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BlindEvaluateRequest {
