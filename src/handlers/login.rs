@@ -1,5 +1,6 @@
 use blstrs::Scalar;
 use chrono::{Duration, FixedOffset, Utc};
+use log::warn;
 use rand::thread_rng;
 use redis::Commands;
 use std::sync::Arc;
@@ -76,6 +77,10 @@ pub async fn login_step1(
         Ok(u) => u,
         Err(e) => match e.code {
             ErrorCode::MissingRecordError => {
+                warn!(
+                    "login-attempt for non-existing user '{}', using fake record",
+                    data.username
+                );
                 create_fake_user(&data.username, &state.username_oprf_key)?
             }
             _ => return Err(e),

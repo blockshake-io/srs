@@ -47,8 +47,11 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let json = serde_json::to_string(self).map_err(|_| std::fmt::Error)?;
         write!(f, "{}", json)?;
+        if self.cause.is_none() {
+            return Ok(());
+        }
         write!(f, "\n")?;
-        match self.cause.as_ref().unwrap_or(&Cause::Custom("no cause")) {
+        match self.cause.as_ref().unwrap() {
             Cause::InputParsing => write!(f, "error parsing input"),
             Cause::IoError(ref err) => Display::fmt(&err, f),
             Cause::SerdeJsonError(ref err) => Display::fmt(&err, f),
@@ -189,7 +192,7 @@ impl From<redis::RedisError> for Error {
 
 impl actix_web::ResponseError for Error {
     fn error_response(&self) -> actix_web::HttpResponse<actix_web::body::BoxBody> {
-        let body = serde_json::to_string(self);
+        let body = serde_json::to_string(&self);
         if body.is_err() {
             HttpResponse::InternalServerError().finish()
         } else {

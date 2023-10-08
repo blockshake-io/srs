@@ -1,8 +1,13 @@
 use std::sync::Arc;
 
-use actix_web::{web, App, HttpServer};
+use actix_web::{
+    dev,
+    middleware::{ErrorHandlerResponse, ErrorHandlers, Logger},
+    web, App, HttpServer,
+};
 use blstrs::Scalar;
 use config::Config;
+use log::warn;
 use srs_opaque::{primitives::derive_keypair, serialization};
 use tokio_postgres::NoTls;
 
@@ -36,8 +41,29 @@ pub struct ServerConfig {
     pub redis_connection_string: String,
 }
 
+/// log errors
+fn error_logger<B>(res: dev::ServiceResponse<B>) -> actix_web::Result<ErrorHandlerResponse<B>> {
+    match res.response().error() {
+        Some(err) => {
+            let req = res.request();
+            warn!(
+                "request \"{} {}\" failed with error: {}",
+                req.method(),
+                req.path(),
+                err
+            );
+        }
+        _ => {}
+    }
+    Ok(ErrorHandlerResponse::Response(res.map_into_left_body()))
+}
+
 #[actix_web::main]
 async fn main() -> Result<()> {
+    // initialize logging
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+
+    // read environment variables
     dotenv::dotenv().ok();
     let server_config: ServerConfig = Config::builder()
         .add_source(config::Environment::default())
@@ -109,6 +135,8 @@ async fn main() -> Result<()> {
             .app_data(query_cfg)
             .app_data(json_cfg)
             .app_data(web::Data::new(app_state.clone()))
+            .wrap(Logger::new("\"%r\" %s %D"))
+            .wrap(ErrorHandlers::new().default_handler(error_logger))
             .service(
                 web::scope("/api")
                     .route("register/step1", web::post().to(register_step1))
