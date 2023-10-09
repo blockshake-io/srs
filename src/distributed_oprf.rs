@@ -8,8 +8,8 @@ use srs_opaque::shamir::{self, EvaluatedElement};
 use tokio::task;
 
 use crate::{
-    constants::USERNAME_OBFUSCATION, error::ErrorCode, servers::indexer::AppState, util,
-    Error, Result,
+    constants::USERNAME_OBFUSCATION, error::ErrorCode, servers::indexer::AppState, util, Error,
+    Result,
 };
 
 #[derive(Debug, Serialize, Deserialize)]

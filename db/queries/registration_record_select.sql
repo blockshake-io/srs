@@ -1,3 +1,3 @@
-select id, client_public_key, masking_key, envelope, payload
+select id, registration_record
 from users
 where username = $1;

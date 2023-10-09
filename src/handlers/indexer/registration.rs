@@ -6,13 +6,12 @@ use std::sync::Arc;
 use crate::{
     constants::PENDING_REGISTRATION_TTL_SEC,
     distributed_oprf,
-    error::Cause,
     ksf::KsfParams,
     redis::{ToRedisKey, NS_PENDING_REGISTRATION},
     servers::indexer::AppState,
     session::SessionKey,
     session::SrsSession,
-    util, Error, Result,
+    Error, Result,
 };
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,
@@ -22,7 +21,6 @@ use serde::{Deserialize, Serialize};
 use srs_opaque::{
     messages::{RegistrationRecord, RegistrationResponse},
     opaque::ServerRegistrationFlow,
-    payload::Payload,
 };
 
 lazy_static! {
@@ -153,27 +151,12 @@ pub async fn register_step2(
     // to prevent user enumeration attacks?
 
     // check & insert new user
-    let client = state.db.get().await?;
-    let stmt = include_str!("../../../db/queries/user_create.sql");
-    let stmt = client.prepare(stmt).await?;
-    client
-        .query(
-            &stmt,
-            &[
-                &pending_registration.username,
-                &util::b64_encode(&data.registration_record.masking_key),
-                &util::b64_encode(&data.registration_record.client_public_key.serialize()[..]),
-                &util::b64_encode(&data.registration_record.envelope.serialize()),
-                &util::b64_encode(&data.registration_record.payload.to_bytes()?[..]),
-            ],
-        )
-        .await
-        .map_err(|e| Error {
-            status: StatusCode::BAD_REQUEST.as_u16(),
-            code: crate::error::ErrorCode::UsernameTakenError,
-            message: format!("username '{}' is taken", &pending_registration.username),
-            cause: Some(Cause::DbError(e)),
-        })?;
+    crate::db::insert_user(
+        &state.db,
+        &pending_registration.username,
+        &data.registration_record,
+    )
+    .await?;
 
     Ok(RegisterStep2Response { success: true })
 }

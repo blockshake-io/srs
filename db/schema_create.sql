@@ -1,9 +1,8 @@
 create table users (
   id bigserial primary key,
-  username text unique,
-  masking_key text,
-  client_public_key text,
-  envelope text,
-  payload text,
-  created_at timestamp with time zone
+  username text unique not null,
+  registration_record json not null,
+  created_at timestamptz not null,
+  updated_at timestamptz,
+  deleted_at timestamptz
 );

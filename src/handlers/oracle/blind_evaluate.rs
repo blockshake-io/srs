@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    error::ErrorCode, rate_limiter::check_rate_limit, servers::oracle::AppState, Error,
-    Result,
+    error::ErrorCode, rate_limiter::check_rate_limit, servers::oracle::AppState, Error, Result,
 };
 use actix_web::{
     body::BoxBody,
