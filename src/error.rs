@@ -6,8 +6,6 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub enum Cause {
-    InputParsing,
-    Custom(&'static str),
     OpaqueError(srs_opaque::error::Error),
     IoError(std::io::Error),
     SerdeJsonError(serde_json::Error),
@@ -62,7 +60,6 @@ impl std::fmt::Display for Error {
         }
         write!(f, "\n")?;
         match self.cause.as_ref().unwrap() {
-            Cause::InputParsing => write!(f, "error parsing input"),
             Cause::IoError(ref err) => Display::fmt(&err, f),
             Cause::SerdeJsonError(ref err) => Display::fmt(&err, f),
             Cause::DbError(ref err) => Display::fmt(&err, f),
@@ -73,7 +70,6 @@ impl std::fmt::Display for Error {
             Cause::ReqwestError(ref err) => Display::fmt(&err, f),
             Cause::Argon2Error(ref err) => Display::fmt(&err, f),
             Cause::RedisError(ref err) => Display::fmt(&err, f),
-            Cause::Custom(err) => write!(f, "Custom: {}", err),
             Cause::DeadpoolError => write!(f, "database error"),
         }
     }
