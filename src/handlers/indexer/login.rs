@@ -9,11 +9,13 @@ use crate::{
     db::{self, User},
     distributed_oprf,
     error::ErrorCode,
+    ksf::KsfParams,
     rate_limiter,
     redis::{ToRedisKey, NS_PENDING_LOGIN},
+    servers::indexer::AppState,
     session::{SessionKey, SrsSession},
     util::crypto_rng_from_seed,
-    AppState, Error, KsfParams, Result, UserId,
+    Error, Result, UserId,
 };
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,

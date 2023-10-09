@@ -1,11 +1,12 @@
 use rand::thread_rng;
-use srs_indexer::{
+use srs::{
     error::{Cause, ErrorCode},
-    handlers::{
+    handlers::indexer::{
         login::{LoginStep1Request, LoginStep1Response, LoginStep2Request, LoginStep2Response},
         registration::{RegisterStep1Request, RegisterStep1Response, RegisterStep2Request},
     },
-    Error, KsfParams, Result,
+    ksf::KsfParams,
+    Error, Result,
 };
 use srs_opaque::{
     ciphersuite::Digest,
@@ -125,7 +126,7 @@ fn login(username: &str, password: &str) -> Result<()> {
         println!("[failure; {}] {}", resp.status(), resp.text()?);
         return Err(Error {
             status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
-            code: srs_indexer::error::ErrorCode::AuthenticationError,
+            code: srs::error::ErrorCode::AuthenticationError,
             message: "Could not authenticate".to_owned(),
             cause: None,
         });
@@ -159,7 +160,7 @@ fn login(username: &str, password: &str) -> Result<()> {
         println!("[failure; {}] {}", resp.status(), resp.text()?);
         return Err(Error {
             status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
-            code: srs_indexer::error::ErrorCode::AuthenticationError,
+            code: srs::error::ErrorCode::AuthenticationError,
             message: "Could not authenticate".to_owned(),
             cause: None,
         });

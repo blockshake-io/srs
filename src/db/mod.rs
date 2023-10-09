@@ -1,6 +1,6 @@
 use srs_opaque::messages::RegistrationRecord;
 
-use crate::{error::ErrorCode::MissingRecordError, Error, KsfParams, Result, UserId};
+use crate::{error::ErrorCode::MissingRecordError, ksf::KsfParams, Error, Result, UserId};
 use srs_opaque::serialization;
 
 pub struct User {

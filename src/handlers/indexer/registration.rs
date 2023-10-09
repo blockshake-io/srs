@@ -7,10 +7,12 @@ use crate::{
     constants::PENDING_REGISTRATION_TTL_SEC,
     distributed_oprf,
     error::Cause,
+    ksf::KsfParams,
     redis::{ToRedisKey, NS_PENDING_REGISTRATION},
+    servers::indexer::AppState,
     session::SessionKey,
     session::SrsSession,
-    util, AppState, Error, KsfParams, Result,
+    util, Error, Result,
 };
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,
@@ -152,7 +154,7 @@ pub async fn register_step2(
 
     // check & insert new user
     let client = state.db.get().await?;
-    let stmt = include_str!("../../db/queries/user_create.sql");
+    let stmt = include_str!("../../../db/queries/user_create.sql");
     let stmt = client.prepare(stmt).await?;
     client
         .query(

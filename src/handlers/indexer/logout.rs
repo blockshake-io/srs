@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{session::SrsSession, AppState, Result};
+use crate::{servers::indexer::AppState, session::SrsSession, Result};
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,
 };

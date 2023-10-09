@@ -1,5 +1,5 @@
 pub mod b64_payload {
-    use crate::{error, util, KsfParams};
+    use crate::{error, ksf::KsfParams, util};
 
     use serde::{Deserialize, Serialize};
     use serde::{Deserializer, Serializer};
