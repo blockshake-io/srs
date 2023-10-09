@@ -42,6 +42,17 @@ pub struct Error {
     pub cause: Option<Cause>,
 }
 
+impl Default for Error {
+    fn default() -> Self {
+        Self {
+            status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+            code: ErrorCode::InternalError,
+            message: "".to_owned(),
+            cause: None,
+        }
+    }
+}
+
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let json = serde_json::to_string(self).map_err(|_| std::fmt::Error)?;
