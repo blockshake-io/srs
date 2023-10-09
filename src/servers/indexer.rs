@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::ksf::KsfParams;
+use crate::{error::ErrorCode::DeserializationError, ksf::KsfParams};
 use blstrs::Scalar;
 use srs_opaque::keypair::KeyPair;
 
@@ -10,7 +10,6 @@ use actix_web::{
 };
 
 use crate::{
-    error::ErrorCode::MissingParameterError,
     handlers::indexer::{
         login::{login_step1, login_step2, login_test},
         logout::logout,
@@ -57,7 +56,7 @@ impl IndexerServer {
             let query_cfg = web::QueryConfig::default().error_handler(|err, _req| {
                 Error {
                     status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
-                    code: MissingParameterError,
+                    code: DeserializationError,
                     message: err.to_string(),
                     cause: None,
                 }
@@ -66,7 +65,7 @@ impl IndexerServer {
             let json_cfg = web::JsonConfig::default().error_handler(|err, _req| {
                 Error {
                     status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
-                    code: MissingParameterError,
+                    code: DeserializationError,
                     message: err.to_string(),
                     cause: None,
                 }

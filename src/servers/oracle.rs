@@ -3,7 +3,8 @@ use std::sync::Arc;
 use blstrs::Scalar;
 
 use crate::{
-    error::ErrorCode, handlers::oracle::blind_evaluate::blind_evaluate_endpoint, Error, Result,
+    error::ErrorCode::DeserializationError,
+    handlers::oracle::blind_evaluate::blind_evaluate_endpoint, Error, Result,
 };
 use actix_web::{
     middleware::{ErrorHandlers, Logger},
@@ -40,7 +41,7 @@ impl OracleServer {
             let json_cfg = web::JsonConfig::default().error_handler(|err, _| {
                 Error {
                     status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
-                    code: ErrorCode::MissingParameterError,
+                    code: DeserializationError,
                     message: err.to_string(),
                     cause: None,
                 }
