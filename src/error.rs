@@ -1,21 +1,33 @@
-use core::fmt::Display;
+use std::fmt::Debug;
 
 use actix_web::{body::BoxBody, http::header, http::StatusCode, HttpResponse};
 use reqwest::header::HeaderValue;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum Cause {
+    #[error("OPAQUE error: {0}")]
     OpaqueError(srs_opaque::error::Error),
+    #[error("I/O Error: {0}")]
     IoError(std::io::Error),
+    #[error("Serde Error: {0}")]
     SerdeJsonError(serde_json::Error),
+    #[error("Database Error: {0}")]
     DbError(tokio_postgres::Error),
+    #[error("Deadpool Error: {0}")]
     DeadpoolPgError(deadpool_postgres::CreatePoolError),
+    #[error("Deadpool Error")]
     DeadpoolError,
+    #[error("Base64 Error: {0}")]
     Base64Error(base64::DecodeError),
+    #[error("Standard Error: {0}")]
     StdError(Box<dyn std::error::Error>),
+    #[error("Reqwest Error: {0}")]
     ReqwestError(reqwest::Error),
+    #[error("Argon2 Error: {0}")]
     Argon2Error(argon2::Error),
+    #[error("Redis Error: {0}")]
     RedisError(redis::RedisError),
 }
 
@@ -31,12 +43,13 @@ pub enum ErrorCode {
     RateLimitExceededError,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Error, Debug, Serialize, Deserialize)]
 pub struct Error {
     pub status: u16,
     pub code: ErrorCode,
     pub message: String,
     #[serde(skip)]
+    #[source]
     pub cause: Option<Cause>,
 }
 
@@ -55,22 +68,9 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let json = serde_json::to_string(self).map_err(|_| std::fmt::Error)?;
         write!(f, "{}", json)?;
-        if self.cause.is_none() {
-            return Ok(());
-        }
-        write!(f, "\n")?;
-        match self.cause.as_ref().unwrap() {
-            Cause::IoError(ref err) => Display::fmt(&err, f),
-            Cause::SerdeJsonError(ref err) => Display::fmt(&err, f),
-            Cause::DbError(ref err) => Display::fmt(&err, f),
-            Cause::DeadpoolPgError(ref err) => Display::fmt(&err, f),
-            Cause::OpaqueError(ref err) => Display::fmt(&err, f),
-            Cause::Base64Error(ref err) => Display::fmt(&err, f),
-            Cause::StdError(ref err) => Display::fmt(&err, f),
-            Cause::ReqwestError(ref err) => Display::fmt(&err, f),
-            Cause::Argon2Error(ref err) => Display::fmt(&err, f),
-            Cause::RedisError(ref err) => Display::fmt(&err, f),
-            Cause::DeadpoolError => write!(f, "database error"),
+        match self.cause.as_ref() {
+            Some(cause) => write!(f, "\n{}", cause),
+            None => Ok(()),
         }
     }
 }
