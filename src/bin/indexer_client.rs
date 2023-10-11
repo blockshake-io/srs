@@ -134,7 +134,7 @@ fn login(username: &str, password: &str) -> Result<()> {
 
     let response: LoginStep1Response = serde_json::from_str(&resp.text()?).unwrap();
     let ksf_stretch = |input: &[u8]| argon2_stretch(input, &response.key_exchange.payload);
-    let (ke3, _session_key, _export_key) = login_flow
+    let (ke3, session_key, export_key) = login_flow
         .finish(Some(SERVER_IDENTITY), &response.key_exchange, ksf_stretch)
         .map_err(|e| Error {
             status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
@@ -170,6 +170,8 @@ fn login(username: &str, password: &str) -> Result<()> {
     println!("Login successful");
     println!("session key: {}", response.session_key.as_str());
     println!("session expiration: {}", response.session_expiration);
+    println!("OPAQUE session key: {}", srs::util::b64_encode(&session_key[..]));
+    println!("OPAQUE export key: {}", srs::util::b64_encode(&export_key[..]));
 
     println!("[PHASE 3] testing login");
     let request = serde_json::to_string(&request2)?;
