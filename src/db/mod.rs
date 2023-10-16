@@ -2,7 +2,7 @@ use srs_opaque::messages::RegistrationRecord;
 use tokio_postgres::types::Json;
 
 use crate::{
-    error::{Cause, ErrorCode::MissingRecordError},
+    error::{ErrorCode::MissingRecordError, Source},
     ksf::KsfParams,
     Error, Result, UserId,
 };
@@ -24,7 +24,7 @@ pub async fn select_user_by_username(db: &deadpool_postgres::Pool, username: &st
             status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
             code: MissingRecordError,
             message: "Could not find record".to_owned(),
-            cause: None,
+            source: None,
         });
     }
 
@@ -53,7 +53,7 @@ pub async fn insert_user(
             status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
             code: crate::error::ErrorCode::UsernameTakenError,
             message: format!("username '{}' is taken", &username),
-            cause: Some(Cause::DbError(e)),
+            source: Some(Source::DbError(e)),
         })?;
 
     Ok(())

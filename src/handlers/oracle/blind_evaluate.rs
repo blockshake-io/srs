@@ -40,7 +40,7 @@ fn validate_public_input(public_input: &str) -> Result<()> {
             status: StatusCode::BAD_REQUEST.as_u16(),
             code: ErrorCode::ValidationError,
             message: "public_input may not be empty".to_owned(),
-            cause: None,
+            source: None,
         });
     }
     if public_input.len() > MAX_PUBLIC_INPUT_LEN {
@@ -48,7 +48,7 @@ fn validate_public_input(public_input: &str) -> Result<()> {
             status: StatusCode::BAD_REQUEST.as_u16(),
             code: ErrorCode::ValidationError,
             message: "public_input may not exceed 100 characters".to_owned(),
-            cause: None,
+            source: None,
         });
     }
     Ok(())

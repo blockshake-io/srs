@@ -17,7 +17,7 @@ where
             status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
             code: ErrorCode::DeserializationError,
             message: "Incorrect length of base64-encoded input".to_owned(),
-            cause: None,
+            source: None,
         });
     }
     buf.copy_from_slice(&data[..]);

@@ -68,7 +68,7 @@ pub async fn register_step1(
             status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
             message: "Could not validate username".to_owned(),
             code: crate::error::ErrorCode::ValidationError,
-            cause: None,
+            source: None,
         });
     }
 
@@ -144,7 +144,7 @@ pub async fn register_step2(
             status: StatusCode::BAD_REQUEST.as_u16(),
             code: crate::error::ErrorCode::ValidationError,
             message: "could not find session".to_owned(),
-            cause: None,
+            source: None,
         })?;
 
     // TODO: should we slow down the the request if the username is taken

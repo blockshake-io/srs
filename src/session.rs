@@ -34,7 +34,7 @@ impl SessionKey {
                 status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
                 code: crate::error::ErrorCode::ValidationError,
                 message: "Could not validate session key".to_owned(),
-                cause: None,
+                source: None,
             })
         }
     }
@@ -141,7 +141,7 @@ fn err401() -> Error {
         status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
         code: crate::error::ErrorCode::AuthenticationError,
         message: "User not authenticated".to_owned(),
-        cause: None,
+        source: None,
     }
 }
 

@@ -1,6 +1,6 @@
 use rand::thread_rng;
 use srs::{
-    error::{Cause, ErrorCode},
+    error::{ErrorCode, Source},
     handlers::indexer::{
         login::{LoginStep1Request, LoginStep1Response, LoginStep2Request, LoginStep2Response},
         registration::{RegisterStep1Request, RegisterStep1Response, RegisterStep2Request},
@@ -128,7 +128,7 @@ fn login(username: &str, password: &str) -> Result<()> {
             status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
             code: srs::error::ErrorCode::AuthenticationError,
             message: "Could not authenticate".to_owned(),
-            cause: None,
+            source: None,
         });
     }
 
@@ -140,7 +140,7 @@ fn login(username: &str, password: &str) -> Result<()> {
             status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
             code: ErrorCode::AuthenticationError,
             message: "Could not authenticate".to_owned(),
-            cause: Some(Cause::OpaqueError(e)),
+            source: Some(Source::OpaqueError(e)),
         })?;
 
     let request2 = LoginStep2Request {
@@ -162,7 +162,7 @@ fn login(username: &str, password: &str) -> Result<()> {
             status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
             code: srs::error::ErrorCode::AuthenticationError,
             message: "Could not authenticate".to_owned(),
-            cause: None,
+            source: None,
         });
     }
 
@@ -170,8 +170,14 @@ fn login(username: &str, password: &str) -> Result<()> {
     println!("Login successful");
     println!("session key: {}", response.session_key.as_str());
     println!("session expiration: {}", response.session_expiration);
-    println!("OPAQUE session key: {}", srs::util::b64_encode(&session_key[..]));
-    println!("OPAQUE export key: {}", srs::util::b64_encode(&export_key[..]));
+    println!(
+        "OPAQUE session key: {}",
+        srs::util::b64_encode(&session_key[..])
+    );
+    println!(
+        "OPAQUE export key: {}",
+        srs::util::b64_encode(&export_key[..])
+    );
 
     println!("[PHASE 3] testing login");
     let request = serde_json::to_string(&request2)?;

@@ -116,7 +116,7 @@ pub fn check_rate_limit(conn: &mut redis::Connection, username: &str) -> Result<
             status: actix_web::http::StatusCode::TOO_MANY_REQUESTS.as_u16(),
             code: crate::error::ErrorCode::RateLimitExceededError,
             message: "rate limit exceeded".to_owned(),
-            cause: None,
+            source: None,
         }),
     }
 }

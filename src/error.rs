@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum Cause {
+pub enum Source {
     #[error("OPAQUE error: {0}")]
     OpaqueError(srs_opaque::error::Error),
     #[error("I/O Error: {0}")]
@@ -49,8 +49,7 @@ pub struct Error {
     pub code: ErrorCode,
     pub message: String,
     #[serde(skip)]
-    #[source]
-    pub cause: Option<Cause>,
+    pub source: Option<Source>,
 }
 
 impl Default for Error {
@@ -59,7 +58,7 @@ impl Default for Error {
             status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
             code: ErrorCode::InternalError,
             message: "".to_owned(),
-            cause: None,
+            source: None,
         }
     }
 }
@@ -68,8 +67,8 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let json = serde_json::to_string(self).map_err(|_| std::fmt::Error)?;
         write!(f, "{}", json)?;
-        match self.cause.as_ref() {
-            Some(cause) => write!(f, "\n{}", cause),
+        match self.source.as_ref() {
+            Some(source) => write!(f, "\n{}", source),
             None => Ok(()),
         }
     }
@@ -81,7 +80,7 @@ impl From<srs_opaque::error::Error> for Error {
             status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
             code: ErrorCode::InternalError,
             message: "".to_owned(),
-            cause: Some(Cause::OpaqueError(err)),
+            source: Some(Source::OpaqueError(err)),
         }
     }
 }
@@ -92,7 +91,7 @@ impl From<std::io::Error> for Error {
             status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
             code: ErrorCode::InternalError,
             message: "".to_owned(),
-            cause: Some(Cause::IoError(err)),
+            source: Some(Source::IoError(err)),
         }
     }
 }
@@ -103,7 +102,7 @@ impl From<serde_json::Error> for Error {
             status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
             code: ErrorCode::InternalError,
             message: "".to_owned(),
-            cause: Some(Cause::SerdeJsonError(err)),
+            source: Some(Source::SerdeJsonError(err)),
         }
     }
 }
@@ -114,7 +113,7 @@ impl From<tokio_postgres::Error> for Error {
             status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
             code: ErrorCode::InternalError,
             message: "".to_owned(),
-            cause: Some(Cause::DbError(err)),
+            source: Some(Source::DbError(err)),
         }
     }
 }
@@ -125,7 +124,7 @@ impl From<deadpool_postgres::CreatePoolError> for Error {
             status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
             code: ErrorCode::InternalError,
             message: "".to_owned(),
-            cause: Some(Cause::DeadpoolPgError(err)),
+            source: Some(Source::DeadpoolPgError(err)),
         }
     }
 }
@@ -136,7 +135,7 @@ impl<E> From<deadpool::managed::PoolError<E>> for Error {
             status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
             code: ErrorCode::InternalError,
             message: "".to_owned(),
-            cause: Some(Cause::DeadpoolError),
+            source: Some(Source::DeadpoolError),
         }
     }
 }
@@ -147,7 +146,7 @@ impl From<base64::DecodeError> for Error {
             status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
             code: ErrorCode::InternalError,
             message: "".to_owned(),
-            cause: Some(Cause::Base64Error(err)),
+            source: Some(Source::Base64Error(err)),
         }
     }
 }
@@ -158,7 +157,7 @@ impl From<Box<dyn std::error::Error>> for Error {
             status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
             code: ErrorCode::InternalError,
             message: "".to_owned(),
-            cause: Some(Cause::StdError(err)),
+            source: Some(Source::StdError(err)),
         }
     }
 }
@@ -169,7 +168,7 @@ impl From<reqwest::Error> for Error {
             status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
             code: ErrorCode::InternalError,
             message: "".to_owned(),
-            cause: Some(Cause::ReqwestError(err)),
+            source: Some(Source::ReqwestError(err)),
         }
     }
 }
@@ -180,7 +179,7 @@ impl From<argon2::Error> for Error {
             status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
             code: ErrorCode::InternalError,
             message: "".to_owned(),
-            cause: Some(Cause::Argon2Error(err)),
+            source: Some(Source::Argon2Error(err)),
         }
     }
 }
@@ -191,7 +190,7 @@ impl From<redis::RedisError> for Error {
             status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
             code: ErrorCode::InternalError,
             message: "".to_owned(),
-            cause: Some(Cause::RedisError(err)),
+            source: Some(Source::RedisError(err)),
         }
     }
 }

@@ -170,7 +170,7 @@ pub async fn login_step2(
         status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
         code: crate::error::ErrorCode::ValidationError,
         message: "could not find session".to_owned(),
-        cause: None,
+        source: None,
     })?;
 
     let flow = ServerLoginState {
@@ -183,7 +183,7 @@ pub async fn login_step2(
         status: actix_web::http::StatusCode::UNAUTHORIZED.as_u16(),
         message: "Could not authorize user".to_owned(),
         code: crate::error::ErrorCode::DeserializationError,
-        cause: Some(crate::error::Cause::OpaqueError(e)),
+        source: Some(crate::error::Source::OpaqueError(e)),
     })?;
 
     let session_ttl = Duration::seconds(SESSION_TTL_SEC);
@@ -240,7 +240,7 @@ fn create_fake_user(username: &str, state: &AppState) -> Result<User> {
             status: actix_web::http::StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
             code: ErrorCode::InternalError,
             message: "No default KSF parameters found".to_owned(),
-            cause: None,
+            source: None,
         })?;
     let record = RegistrationRecord::<KsfParams>::fake(&mut rng, fake_ksf.clone());
     Ok(User {

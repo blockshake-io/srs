@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
         .and_then(|c| c.try_deserialize().ok())
         .ok_or_else(|| Error {
             code: srs::error::ErrorCode::InternalError,
-            cause: None,
+            source: None,
             status: actix_web::http::StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
             message: "Could not parse configuration variables".to_owned(),
         })?;

@@ -43,7 +43,7 @@ impl OracleServer {
                     status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
                     code: DeserializationError,
                     message: err.to_string(),
-                    cause: None,
+                    source: None,
                 }
                 .into()
             });
