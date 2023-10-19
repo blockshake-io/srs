@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use crate::{error::ErrorCode::DeserializationError, ksf::KsfParams};
 use blstrs::Scalar;
 use srs_opaque::keypair::KeyPair;
 
@@ -10,11 +9,14 @@ use actix_web::{
 };
 
 use crate::{
+    error::ErrorCode::DeserializationError,
     handlers::indexer::{
+        cipher_db::post_cipher_db,
         login::{login_step1, login_step2, login_test},
         logout::logout,
         registration::{register_step1, register_step2},
     },
+    ksf::KsfParams,
     Error, Result,
 };
 
@@ -84,7 +86,8 @@ impl IndexerServer {
                         .route("login/step1", web::post().to(login_step1))
                         .route("login/step2", web::post().to(login_step2))
                         .route("login/test", web::get().to(login_test))
-                        .route("logout", web::get().to(logout)),
+                        .route("logout", web::get().to(logout))
+                        .route("cipher-dbs", web::post().to(post_cipher_db)),
                 )
         })
         .bind((srv_address, self.srv_port))?

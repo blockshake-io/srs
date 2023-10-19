@@ -41,6 +41,7 @@ pub enum ErrorCode {
     AuthenticationError,
     SessionKeyNotFoundError,
     RateLimitExceededError,
+    PayloadTooLargeError,
 }
 
 #[derive(Error, Debug, Serialize, Deserialize)]

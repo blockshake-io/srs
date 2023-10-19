@@ -29,7 +29,7 @@ pub async fn select_user_by_username(db: &deadpool_postgres::Pool, username: &st
     }
 
     let row = result.first().unwrap();
-    let id = UserId(row.get::<&str, i64>("id") as u64);
+    let id = UserId(row.get::<&str, i64>("id"));
     let registration_record = row.get::<&str, Json<_>>("registration_record");
 
     Ok(User {
@@ -57,4 +57,25 @@ pub async fn insert_user(
         })?;
 
     Ok(())
+}
+
+pub async fn insert_cipher_db(
+    db: &deadpool_postgres::Pool,
+    user_id: &UserId,
+    application_id: i64,
+    format: &str,
+    ciphertext: &[u8],
+) -> Result<i64> {
+    let client = db.get().await?;
+    let stmt = include_str!("../../db/queries/cipher_db_insert.sql");
+    let stmt = client.prepare(stmt).await?;
+    let result = client
+        .query(&stmt, &[&user_id.0, &application_id, &format, &ciphertext])
+        .await?;
+
+    assert!(result.len() == 1);
+    let row = result.first().unwrap();
+    let id = row.get::<&str, i64>("id");
+
+    Ok(id)
 }
