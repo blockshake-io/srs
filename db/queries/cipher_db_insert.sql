@@ -1,9 +1,8 @@
-insert into cipher_dbs(user_id, application_id, format, ciphertext, created_at)
+insert into cipher_dbs(user_id, application_id, format, ciphertext)
 values (
     $1,
     $2,
     $3,
-    $4,
-    current_timestamp
+    $4
 )
 returning id;

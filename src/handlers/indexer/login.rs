@@ -1,4 +1,4 @@
-use chrono::{Duration, FixedOffset, Utc};
+use chrono::{Duration, NaiveDateTime, Utc};
 use log::warn;
 use rand::{seq::SliceRandom, thread_rng};
 use redis::Commands;
@@ -138,8 +138,8 @@ pub struct LoginStep2Request {
 #[derive(Serialize, Deserialize)]
 pub struct LoginStep2Response {
     pub session_key: SessionKey,
-    #[serde(with = "crate::serialization::rfc33339")]
-    pub session_expiration: chrono::DateTime<FixedOffset>,
+    #[serde(with = "crate::serialization::iso8601")]
+    pub session_expiration: NaiveDateTime,
 }
 
 impl Responder for LoginStep2Response {
@@ -187,8 +187,7 @@ pub async fn login_step2(
     })?;
 
     let session_ttl = Duration::seconds(SESSION_TTL_SEC);
-    let session_expiration =
-        Utc::now().with_timezone(&FixedOffset::east_opt(0).unwrap()) + session_ttl;
+    let session_expiration = Utc::now().naive_utc() + session_ttl;
     let session = SrsSession::create(
         &mut state.redis.get_connection()?,
         &pending_login.user_id,

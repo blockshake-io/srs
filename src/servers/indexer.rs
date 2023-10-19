@@ -11,7 +11,7 @@ use actix_web::{
 use crate::{
     error::ErrorCode::DeserializationError,
     handlers::indexer::{
-        cipher_db::post_cipher_db,
+        cipher_db::{get_cipher_db, get_cipher_dbs, post_cipher_db},
         login::{login_step1, login_step2, login_test},
         logout::logout,
         registration::{register_step1, register_step2},
@@ -87,7 +87,9 @@ impl IndexerServer {
                         .route("login/step2", web::post().to(login_step2))
                         .route("login/test", web::get().to(login_test))
                         .route("logout", web::get().to(logout))
-                        .route("cipher-dbs", web::post().to(post_cipher_db)),
+                        .route("cipher-dbs", web::post().to(post_cipher_db))
+                        .route("cipher-dbs", web::get().to(get_cipher_dbs))
+                        .route("cipher-dbs/{id}/download", web::get().to(get_cipher_db)),
                 )
         })
         .bind((srv_address, self.srv_port))?

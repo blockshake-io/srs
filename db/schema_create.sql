@@ -2,9 +2,9 @@ create table users (
   id bigserial primary key,
   username text unique not null,
   registration_record json not null,
-  created_at timestamptz not null,
-  updated_at timestamptz,
-  deleted_at timestamptz
+  created_at timestamp not null default (now() at time zone 'utc'),
+  updated_at timestamp,
+  deleted_at timestamp
 );
 
 create table cipher_dbs (
@@ -13,7 +13,7 @@ create table cipher_dbs (
   application_id bigint not null,
   format text not null,
   ciphertext bytea not null,
-  created_at timestamptz not null,
-  updated_at timestamptz,
-  deleted_at timestamptz
+  created_at timestamp not null default (now() at time zone 'utc'),
+  updated_at timestamp,
+  deleted_at timestamp
 );

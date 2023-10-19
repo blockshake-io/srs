@@ -1,7 +1,6 @@
-insert into users(username, registration_record, created_at)
+insert into users(username, registration_record)
 values (
     $1,
-    $2,
-    current_timestamp
+    $2
 )
 returning id;

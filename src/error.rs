@@ -15,6 +15,8 @@ pub enum Source {
     SerdeJsonError(serde_json::Error),
     #[error("Database Error: {0}")]
     DbError(tokio_postgres::Error),
+    #[error("Database Error: {0}")]
+    PgMapperError(tokio_pg_mapper::Error),
     #[error("Deadpool Error: {0}")]
     DeadpoolPgError(deadpool_postgres::CreatePoolError),
     #[error("Deadpool Error")]
@@ -42,6 +44,8 @@ pub enum ErrorCode {
     SessionKeyNotFoundError,
     RateLimitExceededError,
     PayloadTooLargeError,
+    NotFoundError,
+    ForbiddenError,
 }
 
 #[derive(Error, Debug, Serialize, Deserialize)]
@@ -115,6 +119,17 @@ impl From<tokio_postgres::Error> for Error {
             code: ErrorCode::InternalError,
             message: "".to_owned(),
             source: Some(Source::DbError(err)),
+        }
+    }
+}
+
+impl From<tokio_pg_mapper::Error> for Error {
+    fn from(err: tokio_pg_mapper::Error) -> Error {
+        Error {
+            status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+            code: ErrorCode::InternalError,
+            message: "".to_owned(),
+            source: Some(Source::PgMapperError(err)),
         }
     }
 }
