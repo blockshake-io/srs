@@ -81,17 +81,26 @@ pub async fn blind_evaluate(
         }
     }
 
-    // if there weren't enough successful requests to recvoer the secret,
-    // but there were enough rate-limited requests, we report rate-limiting
-    // as error
     let threshold = state.oprf_threshold as usize;
-    if results.len() < threshold && rate_limited_requests >= threshold {
-        return Err(Error {
-            status: StatusCode::TOO_MANY_REQUESTS.as_u16(),
-            message: "rate limit exceeded".to_owned(),
-            code: ErrorCode::RateLimitExceededError,
-            source: None,
-        });
+    if results.len() < threshold {
+        if rate_limited_requests >= threshold {
+            // if there are enough rate-limited requests, we report rate-limiting
+            // as error
+            return Err(Error {
+                status: StatusCode::TOO_MANY_REQUESTS.as_u16(),
+                code: ErrorCode::RateLimitExceededError,
+                message: "rate limit exceeded".to_owned(),
+                source: None,
+            });
+        } else {
+            // we couldn't get enough oracle servers to respond, so we abort
+            return Err(Error {
+                status: StatusCode::SERVICE_UNAVAILABLE.as_u16(),
+                code: ErrorCode::OraclesUnavailableError,
+                message: "insufficient number of oracles available".to_owned(),
+                source: None,
+            })
+        }
     }
 
     Ok(shamir::lagrange_interpolation(

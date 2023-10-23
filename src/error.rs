@@ -46,6 +46,7 @@ pub enum ErrorCode {
     PayloadTooLargeError,
     NotFoundError,
     ForbiddenError,
+    OraclesUnavailableError,
 }
 
 #[derive(Error, Debug, Serialize, Deserialize)]
