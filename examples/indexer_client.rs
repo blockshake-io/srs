@@ -437,7 +437,7 @@ impl Client {
         println!("- register: register at SRS");
         println!("- login: login to SRS");
         println!("- logout: logout from SRS");
-        println!("- new-db: list all user's DBs");
+        println!("- new-db: create a new DB in memory");
         println!("- list-dbs: list all user's DBs");
         println!("- download-db $ID: download ciphertext $ID");
         println!("- upload-db: upload the encrypted database that's currently in memory");
