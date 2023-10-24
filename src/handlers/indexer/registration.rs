@@ -4,13 +4,14 @@ use std::sync::Arc;
 
 use crate::{
     constants::PENDING_REGISTRATION_TTL_SEC,
-    distributed_oprf,
+    distributed_oprf::{self, obfuscate_username},
     ksf::KsfParams,
     redis::{ToRedisKey, NS_PENDING_REGISTRATION},
     servers::indexer::AppState,
     session::SessionKey,
     session::SrsSession,
-    Error, Result, validators::validate_username,
+    validators::validate_username,
+    Error, Result,
 };
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,
@@ -62,7 +63,7 @@ pub async fn register_step1(
     let evaluated_element = distributed_oprf::blind_evaluate(
         state.get_ref().as_ref(),
         &data.blinded_element,
-        data.username.as_bytes(),
+        obfuscate_username(&data.username, &state.username_oprf_key)?,
     )
     .await?;
     let registration_response = flow.start(evaluated_element);

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use crate::{
     constants::{PENDING_LOGIN_TTL_SEC, SESSION_TTL_SEC, USERNAME_OBFUSCATION},
     db::{self, User},
-    distributed_oprf,
+    distributed_oprf::{self, obfuscate_username},
     error::ErrorCode,
     ksf::KsfParams,
     rate_limiter,
@@ -15,7 +15,8 @@ use crate::{
     servers::indexer::AppState,
     session::{SessionKey, SrsSession},
     util::crypto_rng_from_seed,
-    Error, Result, UserId, validators::validate_username,
+    validators::validate_username,
+    Error, Result, UserId,
 };
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,
@@ -108,7 +109,7 @@ pub async fn login_step1(
     let evaluated_element = distributed_oprf::blind_evaluate(
         state.get_ref().as_ref(),
         &data.key_exchange.credential_request.blinded_element,
-        data.username.as_bytes(),
+        obfuscate_username(&data.username, &state.username_oprf_key)?,
     )
     .await?;
 

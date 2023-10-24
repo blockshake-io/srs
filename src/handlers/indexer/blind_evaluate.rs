@@ -21,7 +21,7 @@ pub async fn blind_evaluate_endpoint(
     let evaluated_element = distributed_oprf::blind_evaluate(
         state.get_ref().as_ref(),
         &data.blinded_element,
-        data.public_input.as_bytes(),
+        data.public_input.clone(),
     )
     .await?;
 

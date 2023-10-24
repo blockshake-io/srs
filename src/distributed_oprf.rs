@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use actix_web::http::StatusCode;
-use blstrs::{G2Affine, Gt};
+use blstrs::{G2Affine, Gt, Scalar};
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use srs_opaque::shamir::{self, EvaluatedElement};
@@ -39,19 +39,23 @@ async fn relay_request(
     }
 }
 
+/// We obfuscate the username before we send it to oracle servers such that
+/// they cannot track the usernames that access the indexer. The username is
+/// obfuscated with a PRF and the result is base64-encoded.
+pub fn obfuscate_username(username: &str, oprf_key: &Scalar) -> Result<String> {
+    let obfuscated_public_input =
+        srs_opaque::oprf::evaluate(username.as_bytes(), USERNAME_OBFUSCATION, oprf_key)?;
+    Ok(util::b64_encode(&obfuscated_public_input[..]))
+}
+
 pub async fn blind_evaluate(
     state: &AppState,
     blinded_element: &G2Affine,
-    public_input: &[u8],
+    public_input: String,
 ) -> Result<Gt> {
-    let obfuscated_public_input =
-        srs_opaque::oprf::evaluate(public_input, USERNAME_OBFUSCATION, &state.username_oprf_key)?;
-    let obfuscated_public_input = util::b64_encode(&obfuscated_public_input[..]);
-
-    // TODO: do we need to put this in an Arc?
     let request = Arc::new(BlindEvaluateRequest {
         blinded_element: *blinded_element,
-        public_input: obfuscated_public_input,
+        public_input,
     });
 
     // initiate relayed requests...
