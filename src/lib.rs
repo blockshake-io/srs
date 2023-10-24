@@ -13,6 +13,7 @@ pub mod serialization;
 pub mod servers;
 mod session;
 pub mod util;
+mod validators;
 
 use serde::{Deserialize, Serialize};
 

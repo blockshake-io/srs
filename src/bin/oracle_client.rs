@@ -1,7 +1,7 @@
 use blstrs::{Compress, G2Affine, G2Projective, Gt, Scalar};
 use ff::Field;
 use sha2::{Digest, Sha512_256};
-use srs::handlers::oracle::blind_evaluate::{BlindEvaluateRequest, EvaluatedElement};
+use srs::handlers::indexer::blind_evaluate::{BlindEvaluateRequest, EvaluatedElement};
 use srs_opaque::ciphersuite::DST;
 
 struct BlindResult {
@@ -41,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("blinded element: {}", blind_result.blinded_element);
 
     println!("connecting to server");
-    let host = "http://localhost:8081";
+    let host = "http://localhost:8080";
 
     let request = BlindEvaluateRequest {
         blinded_element: blind_result.blinded_element,

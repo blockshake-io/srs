@@ -99,7 +99,7 @@ pub async fn blind_evaluate(
                 code: ErrorCode::OraclesUnavailableError,
                 message: "insufficient number of oracles available".to_owned(),
                 source: None,
-            })
+            });
         }
     }
 
