@@ -13,7 +13,7 @@ use crate::{
     handlers::indexer::{
         blind_evaluate::blind_evaluate_endpoint,
         cipher_db::{get_cipher_db, get_cipher_dbs, post_cipher_db},
-        login::{login_step1, login_step2, login_test},
+        login::{login_step1, login_step2},
         logout::logout,
         registration::{register_step1, register_step2},
     },
@@ -86,7 +86,6 @@ impl IndexerServer {
                         .route("register/step2", web::post().to(register_step2))
                         .route("login/step1", web::post().to(login_step1))
                         .route("login/step2", web::post().to(login_step2))
-                        .route("login/test", web::get().to(login_test))
                         .route("logout", web::get().to(logout))
                         .route("cipher-dbs", web::post().to(post_cipher_db))
                         .route("cipher-dbs", web::get().to(get_cipher_dbs))

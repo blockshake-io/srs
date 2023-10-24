@@ -204,31 +204,6 @@ pub async fn login_step2(
     })
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct LoginTestResponse {
-    body: String,
-}
-
-impl Responder for LoginTestResponse {
-    type Body = BoxBody;
-
-    fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
-        HttpResponse::Ok()
-            .content_type(ContentType::plaintext())
-            .body(self.body)
-    }
-}
-
-pub async fn login_test(
-    state: web::Data<Arc<AppState>>,
-    session: SrsSession,
-) -> Result<LoginTestResponse> {
-    session.check_authenticated(&mut state.redis.get_connection()?)?;
-    Ok(LoginTestResponse {
-        body: "success".to_owned(),
-    })
-}
-
 fn create_fake_user(username: &str, state: &AppState) -> Result<User> {
     let mut rng = crypto_rng_from_seed(
         &srs_opaque::oprf::evaluate(
