@@ -1,6 +1,5 @@
 use blstrs::G2Affine;
 use redis::Commands;
-use regex::Regex;
 use std::sync::Arc;
 
 use crate::{
@@ -11,7 +10,7 @@ use crate::{
     servers::indexer::AppState,
     session::SessionKey,
     session::SrsSession,
-    Error, Result,
+    Error, Result, validators::validate_username,
 };
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,
@@ -22,11 +21,6 @@ use srs_opaque::{
     messages::{RegistrationRecord, RegistrationResponse},
     opaque::ServerRegistrationFlow,
 };
-
-lazy_static! {
-    static ref USERNAME_REGEX: Regex =
-        Regex::new(r"^[a-zA-Z0-9._+-]{3,32}(@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})?$").unwrap();
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct PendingRegistration {
@@ -62,15 +56,7 @@ pub async fn register_step1(
     data: web::Json<RegisterStep1Request>,
 ) -> Result<RegisterStep1Response> {
     session.check_unauthenticated(&mut state.redis.get_connection()?)?;
-
-    if USERNAME_REGEX.captures(&data.username).is_none() {
-        return Err(Error {
-            status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
-            message: "Could not validate username".to_owned(),
-            code: crate::error::ErrorCode::ValidationError,
-            source: None,
-        });
-    }
+    validate_username(&data.username)?;
 
     let flow = ServerRegistrationFlow::new(&state.ke_keypair.public_key);
     let evaluated_element = distributed_oprf::blind_evaluate(

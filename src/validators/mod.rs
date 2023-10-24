@@ -1,5 +1,6 @@
 use crate::{error::ErrorCode, Error, Result};
 use actix_web::http::StatusCode;
+use regex::Regex;
 
 pub const MAX_PUBLIC_INPUT_LEN: usize = 100;
 
@@ -21,4 +22,21 @@ pub fn validate_public_input(public_input: &str) -> Result<()> {
         });
     }
     Ok(())
+}
+
+lazy_static! {
+    static ref USERNAME_REGEX: Regex =
+        Regex::new(r"^[a-zA-Z0-9._+-]{3,32}(@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})?$").unwrap();
+}
+
+pub fn validate_username(username: &str) -> Result<()> {
+    match USERNAME_REGEX.captures(username) {
+        Some(_) => Ok(()),
+        None => Err(Error {
+            status: actix_web::http::StatusCode::BAD_REQUEST.as_u16(),
+            message: "Could not validate username".to_owned(),
+            code: crate::error::ErrorCode::ValidationError,
+            source: None,
+        }),
+    }
 }

@@ -15,7 +15,7 @@ use crate::{
     servers::indexer::AppState,
     session::{SessionKey, SrsSession},
     util::crypto_rng_from_seed,
-    Error, Result, UserId,
+    Error, Result, UserId, validators::validate_username,
 };
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,
@@ -65,9 +65,14 @@ pub async fn login_step1(
     session: SrsSession,
     data: web::Json<LoginStep1Request>,
 ) -> Result<LoginStep1Response> {
-    let mut redis_conn = state.redis.get_connection()?;
+    // we validate the username to prevent, e.g., too long values to
+    // be stored in redis for rate limiting
+    validate_username(&data.username)?;
+
     // no session must be provided
+    let mut redis_conn = state.redis.get_connection()?;
     session.check_unauthenticated(&mut redis_conn)?;
+
     // login attempts for a given username are rate-limited
     rate_limiter::check_rate_limit(&mut redis_conn, &data.username)?;
 
