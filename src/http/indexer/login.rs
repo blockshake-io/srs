@@ -7,12 +7,12 @@ use std::sync::Arc;
 use crate::{
     constants::{PENDING_LOGIN_TTL_SEC, SESSION_TTL_SEC, USERNAME_OBFUSCATION},
     db::{self, User},
-    distributed_oprf::{self, obfuscate_username},
     error::ErrorCode,
     ksf::KsfParams,
     rate_limiter,
     redis::{ToRedisKey, NS_PENDING_LOGIN},
     servers::indexer::AppState,
+    services::oracle,
     session::{SessionKey, SrsSession},
     util::crypto_rng_from_seed,
     validators::validate_username,
@@ -106,10 +106,10 @@ pub async fn login_step1(
         rng,
     );
 
-    let evaluated_element = distributed_oprf::blind_evaluate(
+    let evaluated_element = oracle::blind_evaluate(
         state.get_ref().as_ref(),
         &data.key_exchange.credential_request.blinded_element,
-        obfuscate_username(&data.username, &state.username_oprf_key)?,
+        oracle::obfuscate_username(&data.username, &state.username_oprf_key)?,
     )
     .await?;
 

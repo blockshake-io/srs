@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    distributed_oprf, rate_limiter::check_rate_limit, servers::indexer::AppState,
+    rate_limiter::check_rate_limit, servers::indexer::AppState, services::oracle,
     validators::validate_public_input, Result,
 };
 use actix_web::{
@@ -18,7 +18,7 @@ pub async fn blind_evaluate_endpoint(
     validate_public_input(&data.public_input)?;
     check_rate_limit(&mut state.redis.get_connection()?, &data.public_input)?;
 
-    let evaluated_element = distributed_oprf::blind_evaluate(
+    let evaluated_element = oracle::blind_evaluate(
         state.get_ref().as_ref(),
         &data.blinded_element,
         data.public_input.clone(),

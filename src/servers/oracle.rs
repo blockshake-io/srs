@@ -3,8 +3,8 @@ use std::sync::Arc;
 use blstrs::Scalar;
 
 use crate::{
-    error::ErrorCode::DeserializationError,
-    http::oracle::blind_evaluate::blind_evaluate_endpoint, Error, Result,
+    error::ErrorCode::DeserializationError, http::oracle::blind_evaluate::blind_evaluate_endpoint,
+    Error, Result,
 };
 use actix_web::{
     middleware::{ErrorHandlers, Logger},

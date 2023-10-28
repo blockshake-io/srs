@@ -3,7 +3,6 @@ extern crate lazy_static;
 
 mod constants;
 mod db;
-mod distributed_oprf;
 pub mod error;
 pub mod http;
 pub mod ksf;
@@ -11,6 +10,7 @@ mod rate_limiter;
 mod redis;
 pub mod serialization;
 pub mod servers;
+pub mod services;
 mod session;
 pub mod util;
 mod validators;

@@ -4,10 +4,10 @@ use std::sync::Arc;
 
 use crate::{
     constants::PENDING_REGISTRATION_TTL_SEC,
-    distributed_oprf::{self, obfuscate_username},
     ksf::KsfParams,
     redis::{ToRedisKey, NS_PENDING_REGISTRATION},
     servers::indexer::AppState,
+    services::oracle,
     session::SessionKey,
     session::SrsSession,
     validators::validate_username,
@@ -60,10 +60,10 @@ pub async fn register_step1(
     validate_username(&data.username)?;
 
     let flow = ServerRegistrationFlow::new(&state.ke_keypair.public_key);
-    let evaluated_element = distributed_oprf::blind_evaluate(
+    let evaluated_element = oracle::blind_evaluate(
         state.get_ref().as_ref(),
         &data.blinded_element,
-        obfuscate_username(&data.username, &state.username_oprf_key)?,
+        oracle::obfuscate_username(&data.username, &state.username_oprf_key)?,
     )
     .await?;
     let registration_response = flow.start(evaluated_element);
