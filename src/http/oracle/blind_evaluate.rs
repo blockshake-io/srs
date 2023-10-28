@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    rate_limiter::check_rate_limit, servers::oracle::AppState, validators::validate_public_input,
-    Result,
+    servers::oracle::AppState, services::rate_limiter::check_rate_limit,
+    validators::validate_public_input, Result,
 };
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,

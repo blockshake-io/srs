@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    rate_limiter::check_rate_limit, servers::indexer::AppState, services::oracle,
+    servers::indexer::AppState, services::oracle, services::rate_limiter::check_rate_limit,
     validators::validate_public_input, Result,
 };
 use actix_web::{

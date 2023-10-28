@@ -123,7 +123,7 @@ pub fn check_rate_limit(conn: &mut redis::Connection, username: &str) -> Result<
 
 #[cfg(test)]
 mod tests {
-    use crate::rate_limiter::{TokenBucket, MAX_BUCKET_SIZE};
+    use crate::services::rate_limiter::{TokenBucket, MAX_BUCKET_SIZE};
     const ONE_NS: u128 = 1_000_000_000;
 
     fn ns(t: u128) -> u128 {

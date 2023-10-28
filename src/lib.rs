@@ -6,7 +6,6 @@ mod db;
 pub mod error;
 pub mod http;
 pub mod ksf;
-mod rate_limiter;
 pub mod serialization;
 pub mod servers;
 pub mod services;
