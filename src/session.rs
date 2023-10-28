@@ -8,7 +8,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    redis::{ToRedisKey, NS_SESSION},
+    db::redis::{ToRedisKey, NS_SESSION},
     Error, UserId,
 };
 

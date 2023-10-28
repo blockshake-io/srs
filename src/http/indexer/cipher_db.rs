@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    db::{self, CipherDbListItem},
+    db::{self, cipher_db::CipherDbListItem},
     error::ErrorCode,
     servers::indexer::AppState,
     session::SrsSession,
@@ -83,7 +83,7 @@ pub async fn post_cipher_db(
         }
     }
 
-    db::insert_cipher_db(
+    db::cipher_db::insert_cipher_db(
         &state.db,
         &session.user_id,
         data.application_id,
@@ -125,7 +125,7 @@ pub async fn get_cipher_dbs(
 ) -> Result<GetChiperDbsResponse> {
     let session = session.check_authenticated(&mut state.redis.get_connection()?)?;
 
-    let results = db::get_cipher_dbs(
+    let results = db::cipher_db::get_cipher_dbs(
         &state.db,
         &session.user_id,
         data.application_id,
@@ -157,7 +157,7 @@ pub async fn get_cipher_db(
     data: web::Path<i64>,
 ) -> Result<GetChiperDbResponse> {
     let session = session.check_authenticated(&mut state.redis.get_connection()?)?;
-    let cipher_db = db::get_cipher_db(&state.db, *data).await?;
+    let cipher_db = db::cipher_db::get_cipher_db(&state.db, *data).await?;
     if cipher_db.user_id != session.user_id.0 {
         return Err(Error {
             status: StatusCode::FORBIDDEN.as_u16(),

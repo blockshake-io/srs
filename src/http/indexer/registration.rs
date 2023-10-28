@@ -4,8 +4,9 @@ use std::sync::Arc;
 
 use crate::{
     constants::PENDING_REGISTRATION_TTL_SEC,
+    db,
+    db::redis::{ToRedisKey, NS_PENDING_REGISTRATION},
     ksf::KsfParams,
-    redis::{ToRedisKey, NS_PENDING_REGISTRATION},
     servers::indexer::AppState,
     services::oracle,
     session::SessionKey,
@@ -138,7 +139,7 @@ pub async fn register_step2(
     // to prevent user enumeration attacks?
 
     // check & insert new user
-    crate::db::insert_user(
+    db::user::insert_user(
         &state.db,
         &pending_registration.username,
         &data.registration_record,

@@ -6,11 +6,11 @@ use std::sync::Arc;
 
 use crate::{
     constants::{PENDING_LOGIN_TTL_SEC, SESSION_TTL_SEC, USERNAME_OBFUSCATION},
-    db::{self, User},
+    db::redis::{ToRedisKey, NS_PENDING_LOGIN},
+    db::{self, user::User},
     error::ErrorCode,
     ksf::KsfParams,
     rate_limiter,
-    redis::{ToRedisKey, NS_PENDING_LOGIN},
     servers::indexer::AppState,
     services::oracle,
     session::{SessionKey, SrsSession},
@@ -80,7 +80,7 @@ pub async fn login_step1(
     // we fetch the user from the DB. if the user doesn't exist we create
     // a temporary fake user to prevent user enumeration attacks, see
     // the OPAQUE standard
-    let user = match db::select_user_by_username(&state.db, &data.username).await {
+    let user = match db::user::select_user_by_username(&state.db, &data.username).await {
         Ok(u) => u,
         Err(e) => match e.code {
             ErrorCode::MissingRecordError => {

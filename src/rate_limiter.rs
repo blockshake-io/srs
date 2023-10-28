@@ -4,7 +4,7 @@ use redis::{Commands, FromRedisValue, ToRedisArgs};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    redis::{ToRedisKey, NS_RATE_LIMIT},
+    db::redis::{ToRedisKey, NS_RATE_LIMIT},
     Result,
 };
 
