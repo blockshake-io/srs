@@ -10,7 +10,7 @@ use actix_web::{
 
 use crate::{
     error::ErrorCode::DeserializationError,
-    handlers::indexer::{
+    http::indexer::{
         blind_evaluate::blind_evaluate_endpoint,
         cipher_db::{get_cipher_db, get_cipher_dbs, post_cipher_db},
         login::{login_step1, login_step2},

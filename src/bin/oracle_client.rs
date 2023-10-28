@@ -1,7 +1,7 @@
 use blstrs::{Compress, G2Affine, G2Projective, Gt, Scalar};
 use ff::Field;
 use sha2::{Digest, Sha512_256};
-use srs::handlers::indexer::blind_evaluate::{BlindEvaluateRequest, EvaluatedElement};
+use srs::http::indexer::blind_evaluate::{BlindEvaluateRequest, EvaluatedElement};
 use srs_opaque::ciphersuite::DST;
 
 struct BlindResult {

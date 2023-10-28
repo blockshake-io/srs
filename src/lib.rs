@@ -5,7 +5,7 @@ mod constants;
 mod db;
 mod distributed_oprf;
 pub mod error;
-pub mod handlers;
+pub mod http;
 pub mod ksf;
 mod rate_limiter;
 mod redis;

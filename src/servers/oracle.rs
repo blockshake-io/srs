@@ -4,7 +4,7 @@ use blstrs::Scalar;
 
 use crate::{
     error::ErrorCode::DeserializationError,
-    handlers::oracle::blind_evaluate::blind_evaluate_endpoint, Error, Result,
+    http::oracle::blind_evaluate::blind_evaluate_endpoint, Error, Result,
 };
 use actix_web::{
     middleware::{ErrorHandlers, Logger},

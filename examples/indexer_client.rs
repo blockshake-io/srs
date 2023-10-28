@@ -8,7 +8,7 @@ use reqwest::{
 };
 use srs::{
     error::{ErrorCode, Source},
-    handlers::indexer::{
+    http::indexer::{
         cipher_db::GetChiperDbsResponse,
         login::{LoginStep1Request, LoginStep1Response, LoginStep2Request, LoginStep2Response},
         registration::{RegisterStep1Request, RegisterStep1Response, RegisterStep2Request},
