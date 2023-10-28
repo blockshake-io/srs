@@ -13,10 +13,4 @@ mod session;
 pub mod util;
 mod validators;
 
-use serde::{Deserialize, Serialize};
-
-pub use error::Error;
-pub type Result<T> = std::result::Result<T, Error>;
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct UserId(i64);
+pub use crate::error::{Error, Result};

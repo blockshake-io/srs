@@ -8,8 +8,11 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    db::redis::{ToRedisKey, NS_SESSION},
-    Error, UserId,
+    db::{
+        redis::{ToRedisKey, NS_SESSION},
+        user::UserId,
+    },
+    Error,
 };
 
 lazy_static! {

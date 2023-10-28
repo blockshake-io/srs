@@ -5,7 +5,7 @@ use tokio_pg_mapper::FromTokioPostgresRow;
 use tokio_pg_mapper_derive::PostgresMapper;
 use tokio_postgres::types::ToSql;
 
-use crate::{Error, Result, UserId};
+use crate::{db::user::UserId, Error, Result};
 
 pub async fn insert_cipher_db(
     db: &deadpool_postgres::Pool,

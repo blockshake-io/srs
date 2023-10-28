@@ -7,7 +7,10 @@ use std::sync::Arc;
 use crate::{
     constants::{PENDING_LOGIN_TTL_SEC, SESSION_TTL_SEC, USERNAME_OBFUSCATION},
     db::redis::{ToRedisKey, NS_PENDING_LOGIN},
-    db::{self, user::User},
+    db::{
+        self,
+        user::{User, UserId},
+    },
     error::ErrorCode,
     ksf::KsfParams,
     servers::indexer::AppState,
@@ -15,7 +18,7 @@ use crate::{
     session::{SessionKey, SrsSession},
     util::crypto_rng_from_seed,
     validators::validate_username,
-    Error, Result, UserId,
+    Error, Result,
 };
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,

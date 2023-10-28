@@ -5,6 +5,8 @@ use reqwest::header::HeaderValue;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub type Result<T> = std::result::Result<T, Error>;
+
 #[derive(Error, Debug)]
 pub enum Source {
     #[error("OPAQUE error: {0}")]

@@ -1,11 +1,15 @@
+use serde::{Deserialize, Serialize};
 use srs_opaque::messages::RegistrationRecord;
 use tokio_postgres::types::Json;
 
 use crate::{
     error::{ErrorCode::MissingRecordError, Source},
     ksf::KsfParams,
-    Error, Result, UserId,
+    Error, Result,
 };
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct UserId(pub i64);
 
 pub struct User {
     pub id: UserId,
