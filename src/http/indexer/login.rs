@@ -12,7 +12,6 @@ use crate::{
         user::{User, UserId},
     },
     error::ErrorCode,
-    ksf::KsfParams,
     servers::indexer::AppState,
     services::{oracle, rate_limiter},
     session::{SessionKey, SrsSession},
@@ -40,7 +39,7 @@ pub struct LoginStep1Request {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LoginStep1Response {
     pub session_id: String,
-    pub key_exchange: KeyExchange2<KsfParams>,
+    pub key_exchange: KeyExchange2,
 }
 
 impl Responder for LoginStep1Response {
@@ -224,7 +223,7 @@ fn create_fake_user(username: &str, state: &AppState) -> Result<User> {
             message: "No default KSF parameters found".to_owned(),
             source: None,
         })?;
-    let record = RegistrationRecord::<KsfParams>::fake(&mut rng, fake_ksf.clone());
+    let record = RegistrationRecord::fake(&mut rng, fake_ksf.to_bytes()?.clone());
     Ok(User {
         id: UserId(0),
         registration_record: record,

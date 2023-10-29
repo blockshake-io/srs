@@ -60,6 +60,17 @@ pub struct Error {
     pub source: Option<Source>,
 }
 
+impl Error {
+    pub fn internal(message: &str) -> Self {
+        Self {
+            status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+            code: ErrorCode::InternalError,
+            message: message.to_owned(),
+            source: None,
+        }
+    }
+}
+
 impl Default for Error {
     fn default() -> Self {
         Self {

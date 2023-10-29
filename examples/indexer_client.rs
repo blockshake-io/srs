@@ -68,19 +68,20 @@ fn register(
     password: &str,
     server_public_key: &PublicKey,
 ) -> Result<()> {
-    let payload = KsfParams {
+    let ksf_params = KsfParams {
         m_cost: 8192,
         p_cost: 1,
         t_cost: 1,
         output_len: None,
     };
+    let payload = ksf_params.to_bytes()?;
 
     let rng = thread_rng();
     let mut registration_flow = ClientRegistrationFlow::new(
         username,
         password.as_bytes(),
         &server_public_key,
-        &payload,
+        &payload[..],
         Some(SERVER_IDENTITY),
         rng,
     );
@@ -102,7 +103,7 @@ fn register(
     let session_id = response.session_id;
     let response = response.registration_response;
 
-    let ksf_stretch = |input: &[u8]| argon2_stretch(input, &payload);
+    let ksf_stretch = |input: &[u8]| argon2_stretch(input, &ksf_params);
     let (registration_record, _) = registration_flow.finish(&response, ksf_stretch)?;
 
     let request2 = RegisterStep2Request {
@@ -110,7 +111,7 @@ fn register(
             envelope: registration_record.envelope.clone(),
             masking_key: registration_record.masking_key,
             client_public_key: registration_record.client_public_key,
-            payload: payload,
+            payload,
         },
         session_id,
     };
@@ -158,7 +159,8 @@ fn login(base_url: &str, username: &str, password: &str) -> Result<(String, Auth
     }
 
     let response: LoginStep1Response = serde_json::from_str(&resp.text()?).unwrap();
-    let ksf_stretch = |input: &[u8]| argon2_stretch(input, &response.key_exchange.payload);
+    let ksf_params = KsfParams::from_bytes(&response.key_exchange.payload)?;
+    let ksf_stretch = |input: &[u8]| argon2_stretch(input, &ksf_params);
     let (ke3, session_key, export_key) = login_flow
         .finish(Some(SERVER_IDENTITY), &response.key_exchange, ksf_stretch)
         .map_err(|e| Error {
@@ -476,9 +478,11 @@ impl Client {
 
     fn command_logout(&mut self) -> Result<()> {
         if let Some(v) = self.login.as_ref() {
-            logout(&self.base_url, &v.session_key)?;
+            match logout(&self.base_url, &v.session_key) {
+                Ok(_) => println!("logged out successfully"),
+                Err(err) => eprintln!("{}", err),
+            };
             self.login = None;
-            println!("logged out successfully");
         } else {
             println!("not logged in");
         }

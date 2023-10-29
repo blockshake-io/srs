@@ -4,7 +4,6 @@ use tokio_postgres::types::Json;
 
 use crate::{
     error::{ErrorCode::MissingRecordError, Source},
-    ksf::KsfParams,
     Error, Result,
 };
 
@@ -13,7 +12,7 @@ pub struct UserId(pub i64);
 
 pub struct User {
     pub id: UserId,
-    pub registration_record: RegistrationRecord<KsfParams>,
+    pub registration_record: RegistrationRecord,
 }
 
 pub async fn select_user_by_username(db: &deadpool_postgres::Pool, username: &str) -> Result<User> {
@@ -45,7 +44,7 @@ pub async fn select_user_by_username(db: &deadpool_postgres::Pool, username: &st
 pub async fn insert_user(
     db: &deadpool_postgres::Pool,
     username: &str,
-    registration_record: &RegistrationRecord<KsfParams>,
+    registration_record: &RegistrationRecord,
 ) -> Result<()> {
     let client = db.get().await?;
     let stmt = include_str!("../../db/queries/user_insert.sql");

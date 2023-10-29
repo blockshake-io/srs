@@ -6,7 +6,6 @@ use crate::{
     constants::PENDING_REGISTRATION_TTL_SEC,
     db,
     db::redis::{ToRedisKey, NS_PENDING_REGISTRATION},
-    ksf::KsfParams,
     servers::indexer::AppState,
     services::oracle,
     session::SessionKey,
@@ -90,7 +89,7 @@ pub async fn register_step1(
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegisterStep2Request {
-    pub registration_record: RegistrationRecord<KsfParams>,
+    pub registration_record: RegistrationRecord,
     pub session_id: String,
 }
 
