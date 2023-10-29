@@ -49,6 +49,7 @@ pub enum ErrorCode {
     NotFoundError,
     ForbiddenError,
     OraclesUnavailableError,
+    UnknownKeyVersionError,
 }
 
 #[derive(Error, Debug, Serialize, Deserialize)]

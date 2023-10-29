@@ -2265,6 +2265,7 @@ dependencies = [
  "rand_core",
  "serde",
  "sha2",
+ "thiserror",
  "typenum",
  "zeroize",
 ]

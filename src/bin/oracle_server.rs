@@ -1,20 +1,16 @@
-use blstrs::Scalar;
 use config::Config;
 use serde::Deserialize;
 use srs::{
-    error::ErrorCode,
     servers::oracle::{AppState, OracleServer},
     Error, Result,
 };
-use srs_opaque::serialization;
 
 #[derive(Debug, Default, Deserialize)]
 pub struct ServerConfig {
     pub srv_address: String,
     pub srv_port: u16,
-    pub srv_secret_key_index: u64,
-    #[serde(with = "serialization::b64_scalar")]
-    pub srv_secret_key_share: Scalar,
+    pub srv_default_key_version: u64,
+    pub srv_secret_keys: String,
     pub redis_connection_string: String,
 }
 
@@ -30,18 +26,13 @@ async fn main() -> Result<()> {
         .build()
         .ok()
         .and_then(|c| c.try_deserialize().ok())
-        .ok_or_else(|| Error {
-            code: ErrorCode::InternalError,
-            source: None,
-            status: actix_web::http::StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
-            message: "Could not parse configuration variables".to_owned(),
-        })?;
+        .ok_or_else(|| Error::internal("Could not parse configuration variables"))?;
 
     let redis_client = redis::Client::open(config.redis_connection_string)?;
 
     let app_state = AppState {
-        secret_key_share: config.srv_secret_key_share,
-        secret_key_index: config.srv_secret_key_index,
+        secret_keys: serde_json::from_str(&config.srv_secret_keys)?,
+        default_key_version: config.srv_default_key_version,
         redis: redis_client,
     };
 
