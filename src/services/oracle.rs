@@ -23,17 +23,19 @@ async fn relay_request(
     host: String,
     request: Arc<BlindEvaluateRequest>,
 ) -> std::result::Result<EvaluatedElement, u16> {
-    let e500 = StatusCode::INTERNAL_SERVER_ERROR.as_u16();
     let resp = reqwest::Client::new()
         .post(format!("{}/api/blind-evaluate", host))
         .header("Content-Type", "application/json")
         .json(request.as_ref())
         .send()
         .await
-        .map_err(|_| e500)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.as_u16())?;
 
     if resp.status().is_success() {
-        Ok(resp.json().await.map_err(|_| e500)?)
+        Ok(resp
+            .json()
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.as_u16())?)
     } else {
         Err(resp.status().as_u16())
     }

@@ -11,12 +11,10 @@ use blstrs::{G2Affine, Gt};
 use serde::{Deserialize, Serialize};
 use srs_opaque::{oprf, serialization};
 
-pub const MAX_PUBLIC_INPUT_LEN: usize = 100;
-
 pub async fn blind_evaluate(
     state: web::Data<Arc<AppState>>,
     data: web::Json<BlindEvaluateRequest>,
-) -> Result<EvaluatedElement> {
+) -> Result<BlindEvaluateResponse> {
     validate_public_input(&data.public_input)?;
     check_rate_limit(&mut state.redis.get_connection()?, &data.public_input)?;
 
@@ -39,7 +37,7 @@ pub async fn blind_evaluate(
         &secret.share,
     );
 
-    Ok(EvaluatedElement {
+    Ok(BlindEvaluateResponse {
         evaluated_element,
         server_id: secret.index,
         key_version: secret.version,
@@ -55,14 +53,14 @@ pub struct BlindEvaluateRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct EvaluatedElement {
+pub struct BlindEvaluateResponse {
     #[serde(with = "serialization::b64_gt")]
     pub evaluated_element: Gt,
     pub server_id: u64,
     pub key_version: u64,
 }
 
-impl Responder for EvaluatedElement {
+impl Responder for BlindEvaluateResponse {
     type Body = BoxBody;
 
     fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
