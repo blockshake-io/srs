@@ -11,9 +11,9 @@ use actix_web::{
 use crate::{
     error::ErrorCode::DeserializationError,
     http::indexer::{
-        blind_evaluate::blind_evaluate_endpoint,
+        authenticate::{authenticate_step1, authenticate_step2},
+        blind_evaluate::blind_evaluate,
         cipher_db::{get_cipher_db, get_cipher_dbs, post_cipher_db},
-        login::{login_step1, login_step2},
         logout::logout,
         registration::{register_step1, register_step2},
     },
@@ -108,15 +108,21 @@ impl IndexerServer {
                 .wrap(ErrorHandlers::new().default_handler(error_logger))
                 .service(
                     web::scope("/api")
-                        .route("register/step1", web::post().to(register_step1))
-                        .route("register/step2", web::post().to(register_step2))
-                        .route("login/step1", web::post().to(login_step1))
-                        .route("login/step2", web::post().to(login_step2))
-                        .route("logout", web::get().to(logout))
+                        .route("accounts/register/step1", web::post().to(register_step1))
+                        .route("accounts/register/step2", web::post().to(register_step2))
+                        .route(
+                            "accounts/authenticate/step1",
+                            web::post().to(authenticate_step1),
+                        )
+                        .route(
+                            "accounts/authenticate/step2",
+                            web::post().to(authenticate_step2),
+                        )
+                        .route("accounts/logout", web::get().to(logout))
                         .route("cipher-dbs", web::post().to(post_cipher_db))
                         .route("cipher-dbs", web::get().to(get_cipher_dbs))
                         .route("cipher-dbs/{id}/download", web::get().to(get_cipher_db))
-                        .route("blind-evaluate", web::post().to(blind_evaluate_endpoint)),
+                        .route("oprf/blind-evaluate", web::post().to(blind_evaluate)),
                 )
         })
         .bind((srv_address, self.srv_port))?

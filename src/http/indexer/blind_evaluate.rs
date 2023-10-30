@@ -11,7 +11,7 @@ use blstrs::{G2Affine, Gt};
 use serde::{Deserialize, Serialize};
 use srs_opaque::serialization;
 
-pub async fn blind_evaluate_endpoint(
+pub async fn blind_evaluate(
     state: web::Data<Arc<AppState>>,
     data: web::Json<BlindEvaluateRequest>,
 ) -> Result<EvaluatedElement> {

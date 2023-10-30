@@ -29,18 +29,18 @@ use srs_opaque::{
 };
 
 #[derive(Serialize, Deserialize)]
-pub struct LoginStep1Request {
+pub struct AuthenticateStep1Request {
     pub username: String,
     pub key_exchange: KeyExchange1,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct LoginStep1Response {
+pub struct AuthenticateStep1Response {
     pub session_id: String,
     pub key_exchange: KeyExchange2,
 }
 
-impl Responder for LoginStep1Response {
+impl Responder for AuthenticateStep1Response {
     type Body = BoxBody;
 
     fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
@@ -61,11 +61,11 @@ struct PendingLogin {
     expected_client_mac: AuthCode,
 }
 
-pub async fn login_step1(
+pub async fn authenticate_step1(
     state: web::Data<Arc<AppState>>,
     session: SrsSession,
-    data: web::Json<LoginStep1Request>,
-) -> Result<LoginStep1Response> {
+    data: web::Json<AuthenticateStep1Request>,
+) -> Result<AuthenticateStep1Response> {
     // we validate the username to prevent, e.g., too long values to
     // be stored in redis for rate limiting
     validate_username(&data.username)?;
@@ -117,7 +117,7 @@ pub async fn login_step1(
     .await?;
 
     let (login_state, ke2) = flow.start(evaluated_element)?;
-    let response = LoginStep1Response {
+    let response = AuthenticateStep1Response {
         key_exchange: ke2,
         session_id: SessionKey::random().to_str(),
     };
@@ -140,19 +140,19 @@ pub async fn login_step1(
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct LoginStep2Request {
+pub struct AuthenticateStep2Request {
     pub session_id: String,
     pub key_exchange: KeyExchange3,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct LoginStep2Response {
+pub struct AuthenticateStep2Response {
     pub session_key: SessionKey,
     #[serde(with = "crate::serialization::iso8601")]
     pub session_expiration: NaiveDateTime,
 }
 
-impl Responder for LoginStep2Response {
+impl Responder for AuthenticateStep2Response {
     type Body = BoxBody;
 
     fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
@@ -169,11 +169,11 @@ fn get_pending_login(session_id: &str, redis: &redis::Client) -> Result<PendingL
     Ok(pending_login)
 }
 
-pub async fn login_step2(
+pub async fn authenticate_step2(
     state: web::Data<Arc<AppState>>,
     session: SrsSession,
-    data: web::Json<LoginStep2Request>,
-) -> Result<LoginStep2Response> {
+    data: web::Json<AuthenticateStep2Request>,
+) -> Result<AuthenticateStep2Response> {
     session.check_unauthenticated(&mut state.redis.get_connection()?)?;
 
     let pending_login = get_pending_login(&data.session_id, &state.redis).map_err(|_| Error {
@@ -204,7 +204,7 @@ pub async fn login_step2(
         pending_login.key_version,
         &session_ttl,
     )?;
-    Ok(LoginStep2Response {
+    Ok(AuthenticateStep2Response {
         session_key: session.key,
         session_expiration,
     })

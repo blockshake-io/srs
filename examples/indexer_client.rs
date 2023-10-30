@@ -10,7 +10,10 @@ use srs::{
     error::{ErrorCode, Source},
     http::indexer::{
         cipher_db::GetChiperDbsResponse,
-        login::{LoginStep1Request, LoginStep1Response, LoginStep2Request, LoginStep2Response},
+        authenticate::{
+            AuthenticateStep1Request, AuthenticateStep1Response, AuthenticateStep2Request,
+            AuthenticateStep2Response,
+        },
         registration::{RegisterStep1Request, RegisterStep1Response, RegisterStep2Request},
     },
     ksf::KsfParams,
@@ -94,7 +97,7 @@ fn register(
     })?;
     let client = reqwest::blocking::Client::new();
     let resp = client
-        .post(url(base_url, "api/register/step1"))
+        .post(url(base_url, "api/accounts/register/step1"))
         .header(CONTENT_TYPE, "application/json")
         .body(request)
         .send()?
@@ -119,7 +122,7 @@ fn register(
     let request = serde_json::to_string(&request2)?;
     let client = reqwest::blocking::Client::new();
     let resp = client
-        .post(url(base_url, "api/register/step2"))
+        .post(url(base_url, "api/accounts/register/step2"))
         .header(CONTENT_TYPE, "application/json")
         .body(request)
         .send()?;
@@ -137,14 +140,14 @@ fn login(base_url: &str, username: &str, password: &str) -> Result<(String, Auth
     let mut login_flow = ClientLoginFlow::new(username, password.as_bytes(), rng);
 
     let ke1 = login_flow.start()?;
-    let request = LoginStep1Request {
+    let request = AuthenticateStep1Request {
         username: username.to_owned(),
         key_exchange: ke1,
     };
 
     let client = reqwest::blocking::Client::new();
     let resp = client
-        .post(url(base_url, "api/login/step1"))
+        .post(url(base_url, "api/accounts/authenticate/step1"))
         .header(CONTENT_TYPE, "application/json")
         .body(serde_json::to_string(&request)?)
         .send()?;
@@ -158,7 +161,7 @@ fn login(base_url: &str, username: &str, password: &str) -> Result<(String, Auth
         });
     }
 
-    let response: LoginStep1Response = serde_json::from_str(&resp.text()?).unwrap();
+    let response: AuthenticateStep1Response = serde_json::from_str(&resp.text()?).unwrap();
     let ksf_params = KsfParams::from_bytes(&response.key_exchange.payload)?;
     let ksf_stretch = |input: &[u8]| argon2_stretch(input, &ksf_params);
     let (ke3, session_key, export_key) = login_flow
@@ -170,7 +173,7 @@ fn login(base_url: &str, username: &str, password: &str) -> Result<(String, Auth
             source: Some(Source::OpaqueError(e)),
         })?;
 
-    let request2 = LoginStep2Request {
+    let request2 = AuthenticateStep2Request {
         session_id: response.session_id,
         key_exchange: ke3,
     };
@@ -178,7 +181,7 @@ fn login(base_url: &str, username: &str, password: &str) -> Result<(String, Auth
     let request = serde_json::to_string(&request2)?;
     let client = reqwest::blocking::Client::new();
     let resp = client
-        .post(url(base_url, "api/login/step2"))
+        .post(url(base_url, "api/accounts/authenticate/step2"))
         .header(CONTENT_TYPE, "application/json")
         .body(request)
         .send()?;
@@ -192,7 +195,7 @@ fn login(base_url: &str, username: &str, password: &str) -> Result<(String, Auth
         });
     }
 
-    let response: LoginStep2Response = serde_json::from_str(&resp.text()?).unwrap();
+    let response: AuthenticateStep2Response = serde_json::from_str(&resp.text()?).unwrap();
     println!("\nLogin successful");
     println!("\nSession key (short-lived session key to identify client at indexer):");
     println!("{}", response.session_key.as_str());
@@ -215,7 +218,7 @@ fn login(base_url: &str, username: &str, password: &str) -> Result<(String, Auth
 fn logout(base_url: &str, session_key: &str) -> Result<()> {
     let client = reqwest::blocking::Client::new();
     let resp = client
-        .get(url(base_url, "api/logout"))
+        .get(url(base_url, "api/accounts/logout"))
         .header(AUTHORIZATION, bearer_token(session_key))
         .send()?;
     if !resp.status().is_success() {
