@@ -1,6 +1,7 @@
-insert into users(username, registration_record)
+insert into users(username, key_version, registration_record)
 values (
     $1,
-    $2
+    $2,
+    $3
 )
 returning id;

@@ -46,6 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let request = BlindEvaluateRequest {
         blinded_element: blind_result.blinded_element,
         public_input: public_input.to_owned(),
+        key_version: None,
     };
 
     let resp = reqwest::blocking::Client::new()

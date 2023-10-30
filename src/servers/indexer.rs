@@ -18,20 +18,46 @@ use crate::{
         registration::{register_step1, register_step2},
     },
     ksf::KsfParams,
+    models::KeyVersion,
     Error, Result,
 };
 
 use super::error_logger;
 
-pub struct AppState {
-    pub identity: String,
+pub struct AppConfig {
+    pub version: KeyVersion,
     pub ke_keypair: KeyPair,
-    pub db: deadpool_postgres::Pool,
-    pub redis: ::redis::Client,
     pub oprf_hosts: Vec<String>,
     pub oprf_threshold: u16,
     pub username_oprf_key: Scalar,
+}
+
+pub struct AppState {
+    pub identity: String,
+    pub db: deadpool_postgres::Pool,
+    pub redis: redis::Client,
+    pub configs: Vec<AppConfig>,
+    pub default_version: KeyVersion,
     pub fake_ksf_configs: Vec<KsfParams>,
+}
+
+impl AppState {
+    pub fn config_by_version(&self, version: KeyVersion) -> Result<&AppConfig> {
+        self.configs
+            .iter()
+            .find(|c| c.version == version)
+            .ok_or_else(|| Error {
+                status: actix_web::http::StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                code: crate::error::ErrorCode::InternalError,
+                message: "version not supported".to_owned(),
+                source: None,
+            })
+    }
+
+    pub fn default_config(&self) -> &AppConfig {
+        self.config_by_version(self.default_version)
+            .expect("no config for default version given")
+    }
 }
 
 pub struct IndexerServer {

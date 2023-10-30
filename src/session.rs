@@ -8,10 +8,8 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    db::{
-        redis::{ToRedisKey, NS_SESSION},
-        user::UserId,
-    },
+    db::redis::{ToRedisKey, NS_SESSION},
+    models::{KeyVersion, UserId},
     Error,
 };
 
@@ -75,6 +73,7 @@ impl SessionKey {
 pub struct SessionData {
     pub key: SessionKey,
     pub user_id: UserId,
+    pub key_version: KeyVersion,
 }
 
 impl FromRedisValue for SessionData {
@@ -105,13 +104,15 @@ impl SrsSession {
 
     pub fn create(
         conn: &mut redis::Connection,
-        user_id: &UserId,
+        user_id: UserId,
+        key_version: KeyVersion,
         ttl: &Duration,
     ) -> crate::Result<SessionData> {
         let session_key = SessionKey::random();
         let session_data = SessionData {
             key: session_key,
-            user_id: *user_id,
+            user_id,
+            key_version,
         };
         conn.set_ex(
             session_data.key.to_redis_key(),

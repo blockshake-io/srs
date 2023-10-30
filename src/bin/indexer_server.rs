@@ -4,7 +4,8 @@ use srs_opaque::{primitives::derive_keypair, serialization};
 use tokio_postgres::NoTls;
 
 use srs::{
-    servers::indexer::{AppState, IndexerServer},
+    models::KeyVersion,
+    servers::indexer::{AppConfig, AppState, IndexerServer},
     Error, Result,
 };
 
@@ -22,6 +23,7 @@ pub struct ServerConfig {
     #[serde(with = "serialization::b64_scalar")]
     pub srv_username_oprf_key: Scalar,
     pub srv_fake_ksf_params: String,
+    pub srv_default_key_version: KeyVersion,
     pub db_user: Option<String>,
     pub db_password: Option<String>,
     pub db_host: Option<String>,
@@ -70,15 +72,21 @@ async fn main() -> Result<()> {
         .map(|s| s.to_owned())
         .collect();
 
-    let app_state = AppState {
-        identity: server_config.srv_identity,
+    let config = AppConfig {
+        ke_keypair,
         oprf_hosts,
         oprf_threshold: server_config.srv_oprf_threshold,
-        ke_keypair,
+        username_oprf_key: server_config.srv_username_oprf_key,
+        version: server_config.srv_default_key_version,
+    };
+
+    let app_state = AppState {
+        identity: server_config.srv_identity,
         db: db_config.create_pool(None, NoTls)?,
         redis: redis_client,
-        username_oprf_key: server_config.srv_username_oprf_key,
         fake_ksf_configs: serde_json::from_str(&server_config.srv_fake_ksf_params)?,
+        configs: vec![config],
+        default_version: server_config.srv_default_key_version,
     };
 
     IndexerServer::new(server_config.srv_address, server_config.srv_port, app_state)

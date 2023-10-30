@@ -58,12 +58,14 @@ pub async fn register_step1(
 ) -> Result<RegisterStep1Response> {
     session.check_unauthenticated(&mut state.redis.get_connection()?)?;
     validate_username(&data.username)?;
+    let config = state.default_config();
 
-    let flow = ServerRegistrationFlow::new(&state.ke_keypair.public_key);
+    let flow = ServerRegistrationFlow::new(&config.ke_keypair.public_key);
     let evaluated_element = oracle::blind_evaluate(
         state.get_ref().as_ref(),
         &data.blinded_element,
-        oracle::obfuscate_username(&data.username, &state.username_oprf_key)?,
+        oracle::obfuscate_username(&data.username, &config.username_oprf_key)?,
+        config.version,
     )
     .await?;
     let registration_response = flow.start(evaluated_element);
@@ -141,6 +143,7 @@ pub async fn register_step2(
     db::user::insert_user(
         &state.db,
         &pending_registration.username,
+        state.default_config().version,
         &data.registration_record,
     )
     .await?;

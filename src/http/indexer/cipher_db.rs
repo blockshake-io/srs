@@ -1,11 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    db::{self, cipher_db::CipherDbListItem},
-    error::ErrorCode,
-    servers::indexer::AppState,
-    session::SrsSession,
-    Error, Result,
+    db, error::ErrorCode, models::CipherDbListItem, servers::indexer::AppState,
+    session::SrsSession, Error, Result,
 };
 use actix_multipart::Multipart;
 use actix_web::{
@@ -86,6 +83,7 @@ pub async fn post_cipher_db(
     db::cipher_db::insert_cipher_db(
         &state.db,
         &session.user_id,
+        &session.key_version,
         data.application_id,
         &data.format,
         &buffer[..],
@@ -158,7 +156,7 @@ pub async fn get_cipher_db(
 ) -> Result<GetChiperDbResponse> {
     let session = session.check_authenticated(&mut state.redis.get_connection()?)?;
     let cipher_db = db::cipher_db::get_cipher_db(&state.db, *data).await?;
-    if cipher_db.user_id != session.user_id.0 {
+    if cipher_db.user_id.0 != session.user_id.0 {
         return Err(Error {
             status: StatusCode::FORBIDDEN.as_u16(),
             code: ErrorCode::ForbiddenError,

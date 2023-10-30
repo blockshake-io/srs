@@ -8,8 +8,8 @@ use srs_opaque::shamir::{self, EvaluatedElement};
 use tokio::task;
 
 use crate::{
-    constants::USERNAME_OBFUSCATION, error::ErrorCode, servers::indexer::AppState, util, Error,
-    Result,
+    constants::USERNAME_OBFUSCATION, error::ErrorCode, models::KeyVersion,
+    servers::indexer::AppState, util, Error, Result,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -52,15 +52,18 @@ pub async fn blind_evaluate(
     state: &AppState,
     blinded_element: &G2Affine,
     public_input: String,
+    key_version: KeyVersion,
 ) -> Result<Gt> {
     let request = Arc::new(BlindEvaluateRequest {
         blinded_element: *blinded_element,
         public_input,
     });
 
+    let config = state.config_by_version(key_version)?;
+
     // initiate relayed requests...
     let mut futures = vec![];
-    for host in &state.oprf_hosts {
+    for host in &config.oprf_hosts {
         futures.push(task::spawn(relay_request(
             host[..].to_owned(),
             request.clone(),
@@ -85,7 +88,7 @@ pub async fn blind_evaluate(
         }
     }
 
-    let threshold = state.oprf_threshold as usize;
+    let threshold = config.oprf_threshold as usize;
     if results.len() < threshold {
         if rate_limited_requests >= threshold {
             // if there are enough rate-limited requests, we report rate-limiting
@@ -108,7 +111,7 @@ pub async fn blind_evaluate(
     }
 
     Ok(shamir::lagrange_interpolation(
-        state.oprf_threshold,
+        config.oprf_threshold,
         &results,
     )?)
 }

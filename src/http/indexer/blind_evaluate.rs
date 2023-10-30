@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    servers::indexer::AppState, services::oracle, services::rate_limiter::check_rate_limit,
-    validators::validate_public_input, Result,
+    models::KeyVersion, servers::indexer::AppState, services::oracle,
+    services::rate_limiter::check_rate_limit, validators::validate_public_input, Result,
 };
 use actix_web::{
     body::BoxBody, http::header::ContentType, web, HttpRequest, HttpResponse, Responder,
@@ -22,6 +22,7 @@ pub async fn blind_evaluate_endpoint(
         state.get_ref().as_ref(),
         &data.blinded_element,
         data.public_input.clone(),
+        data.key_version.unwrap_or(state.default_version),
     )
     .await?;
 
@@ -33,6 +34,7 @@ pub struct BlindEvaluateRequest {
     pub public_input: String,
     #[serde(with = "serialization::b64_g2")]
     pub blinded_element: G2Affine,
+    pub key_version: Option<KeyVersion>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

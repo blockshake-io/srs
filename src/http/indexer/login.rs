@@ -6,12 +6,10 @@ use std::sync::Arc;
 
 use crate::{
     constants::{PENDING_LOGIN_TTL_SEC, SESSION_TTL_SEC, USERNAME_OBFUSCATION},
+    db,
     db::redis::{ToRedisKey, NS_PENDING_LOGIN},
-    db::{
-        self,
-        user::{User, UserId},
-    },
     error::ErrorCode,
+    models::{KeyVersion, User, UserId},
     servers::indexer::AppState,
     services::{oracle, rate_limiter},
     session::{SessionKey, SrsSession},
@@ -55,6 +53,7 @@ impl Responder for LoginStep1Response {
 #[derive(Debug, Serialize, Deserialize)]
 struct PendingLogin {
     user_id: UserId,
+    key_version: KeyVersion,
     username: String,
     #[serde(with = "serialization::b64_auth_code")]
     session_key: AuthCode,
@@ -95,12 +94,14 @@ pub async fn login_step1(
         },
     };
 
+    let config = state.config_by_version(user.key_version)?;
+
     let rng = thread_rng();
     let client_identity = data.username.clone();
     let mut flow = ServerLoginFlow::new(
-        &state.ke_keypair.public_key,
+        &config.ke_keypair.public_key,
         Some(&state.identity),
-        &state.ke_keypair,
+        &config.ke_keypair,
         &user.registration_record,
         &data.key_exchange,
         &client_identity,
@@ -110,7 +111,8 @@ pub async fn login_step1(
     let evaluated_element = oracle::blind_evaluate(
         state.get_ref().as_ref(),
         &data.key_exchange.credential_request.blinded_element,
-        oracle::obfuscate_username(&data.username, &state.username_oprf_key)?,
+        oracle::obfuscate_username(&data.username, &config.username_oprf_key)?,
+        config.version,
     )
     .await?;
 
@@ -122,6 +124,7 @@ pub async fn login_step1(
 
     let pending_login = serde_json::to_string(&PendingLogin {
         user_id: user.id,
+        key_version: user.key_version,
         username: data.username.clone(),
         session_key: login_state.session_key,
         expected_client_mac: login_state.expected_client_mac,
@@ -197,7 +200,8 @@ pub async fn login_step2(
     let session_expiration = Utc::now().naive_utc() + session_ttl;
     let session = SrsSession::create(
         &mut state.redis.get_connection()?,
-        &pending_login.user_id,
+        pending_login.user_id,
+        pending_login.key_version,
         &session_ttl,
     )?;
     Ok(LoginStep2Response {
@@ -207,11 +211,12 @@ pub async fn login_step2(
 }
 
 fn create_fake_user(username: &str, state: &AppState) -> Result<User> {
+    let config = state.default_config();
     let mut rng = crypto_rng_from_seed(
         &srs_opaque::oprf::evaluate(
             username.as_bytes(),
             USERNAME_OBFUSCATION,
-            &state.username_oprf_key,
+            &config.username_oprf_key,
         )?[..],
     );
     let fake_ksf = state
@@ -226,6 +231,7 @@ fn create_fake_user(username: &str, state: &AppState) -> Result<User> {
     let record = RegistrationRecord::fake(&mut rng, fake_ksf.to_bytes()?.clone());
     Ok(User {
         id: UserId(0),
+        key_version: config.version,
         registration_record: record,
     })
 }

@@ -1,15 +1,16 @@
-use chrono::NaiveDateTime;
 use reqwest::StatusCode;
-use serde::{Deserialize, Serialize};
 use tokio_pg_mapper::FromTokioPostgresRow;
-use tokio_pg_mapper_derive::PostgresMapper;
 use tokio_postgres::types::ToSql;
 
-use crate::{db::user::UserId, Error, Result};
+use crate::{
+    models::{CipherDb, CipherDbListItem, KeyVersion, UserId},
+    Error, Result,
+};
 
 pub async fn insert_cipher_db(
     db: &deadpool_postgres::Pool,
     user_id: &UserId,
+    key_version: &KeyVersion,
     application_id: i64,
     format: &str,
     ciphertext: &[u8],
@@ -18,7 +19,16 @@ pub async fn insert_cipher_db(
     let stmt = include_str!("../../db/queries/cipher_db_insert.sql");
     let stmt = client.prepare(stmt).await?;
     let result = client
-        .query(&stmt, &[&user_id.0, &application_id, &format, &ciphertext])
+        .query(
+            &stmt,
+            &[
+                &user_id.0,
+                &key_version.0,
+                &application_id,
+                &format,
+                &ciphertext,
+            ],
+        )
         .await?;
 
     assert!(result.len() == 1);
@@ -26,16 +36,6 @@ pub async fn insert_cipher_db(
     let id = row.get::<&str, i64>("id");
 
     Ok(id)
-}
-
-#[derive(Debug, Serialize, Deserialize, PostgresMapper)]
-#[pg_mapper(table = "user")]
-pub struct CipherDbListItem {
-    pub id: i64,
-    pub application_id: i64,
-    pub format: String,
-    #[serde(with = "crate::serialization::iso8601")]
-    pub created_at: NaiveDateTime,
 }
 
 pub async fn get_cipher_dbs(
@@ -73,18 +73,6 @@ pub async fn get_cipher_dbs(
     }
 
     Ok(result)
-}
-
-#[derive(Debug, Serialize, Deserialize, PostgresMapper)]
-#[pg_mapper(table = "user")]
-pub struct CipherDb {
-    pub id: i64,
-    pub user_id: i64,
-    pub application_id: i64,
-    pub format: String,
-    #[serde(with = "crate::serialization::iso8601")]
-    pub created_at: NaiveDateTime,
-    pub ciphertext: Vec<u8>,
 }
 
 pub async fn get_cipher_db(db: &deadpool_postgres::Pool, id: i64) -> Result<CipherDb> {

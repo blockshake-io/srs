@@ -2226,6 +2226,7 @@ dependencies = [
  "group",
  "lazy_static",
  "log",
+ "postgres-protocol",
  "rand",
  "rand_chacha",
  "rand_core",
@@ -2265,7 +2266,6 @@ dependencies = [
  "rand_core",
  "serde",
  "sha2",
- "thiserror",
  "typenum",
  "zeroize",
 ]

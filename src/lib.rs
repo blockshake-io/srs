@@ -6,6 +6,7 @@ mod db;
 pub mod error;
 pub mod http;
 pub mod ksf;
+pub mod models;
 pub mod serialization;
 pub mod servers;
 pub mod services;
