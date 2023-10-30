@@ -1,0 +1,139 @@
+openapi: 3.0.3
+info:
+  title: SRS Oracle API
+  version: 0.0.1
+  description: |2
+    API of the SRS Oracle that is used to evaluate the
+    [POPRF](https://www.ietf.org/archive/id/draft-irtf-cfrg-voprf-21.html)
+    protocol. In the POPRF protocol client & server interact to compute a
+    pseudo-random function (PRF) **F(k,x,i)** where
+
+    - **k** is a private key that only the server knows,
+    - **x** is a private input that only the client knows, and
+    - **i** is a public input that client & server know
+
+    The POPRF protocol guarantees that after evaluating the protocol, (a) the
+    client learns the output of function **F** but not the server's private key,
+    and (b) the server learns only the public input **i** but nothing else.
+
+    SRS Oracles can be organized in a cluster that uses Shamir's Secret Sharing
+    (SSS) scheme to protect the private key **k**. A user needs to talk to a
+    treshold **t** out of **n** oracles to be able to compute **F(k,x,i)**.
+  contact:
+    email: info@blockshake.io
+servers:
+- url: http://localhost:8081
+  description: Development server
+tags:
+- name: Oracle
+paths:
+  /api/blind-evaluate:
+    post:
+      operationId: blind_evaluate
+      description: |2
+        This corresponds to the `BlindEvaluate` function in the
+        POPRF protocol.
+      tags:
+      - Oracle
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlindEvaluateRequest'
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlindEvaluateResponse'
+        '4XX':
+          description: 'Input error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    BlindEvaluateRequest:
+      type: object
+      properties:
+        public_input:
+          type: string
+          description: |2
+            The public input is used for namespacing and allows the caller
+            to "seed" the OPRF function. The public input is commonly used
+            to identify a user through a username or some other (obfuscated)
+            identifier.
+          minLength: 1
+          maxLength: 100
+          example: "info@blockshake.io"
+        blinded_element:
+          $ref: '#/components/schemas/G2Affine'
+        key_version:
+          $ref: '#/components/schemas/KeyVersion'
+      required:
+      - public_input
+      - blinded_element
+    BlindEvaluateResponse:
+      type: object
+      properties:
+        evaluated_element:
+          $ref: '#/components/schemas/Gt'
+        key_version:
+          $ref: '#/components/schemas/KeyVersion'
+        server_id:
+          type: integer
+          minimum: 1
+          description: |2
+            The server ID is important if the oracle is part of a cluster
+            that uses Shamir's Secret Sharing scheme. In this case, the
+            server id is the x-coordinate of the server's point on the
+            polynomial.
+      required:
+      - evaluated_element
+      - server_id
+      - key_version
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          description: HTTP status code
+        code:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Error message
+      example:
+        status: 429
+        code: "RateLimitExceededError"
+        message: "rate limit exceeded"
+      required:
+      - status
+      - message
+      - code
+    G2Affine:
+      type: string
+      format: base64
+      description: |2
+        This is an element of group G2 in the BLS12-381 elliptic curve.
+        The element is the base64-encoded value of the element's compressed
+        representation that occupies 96 bytes.
+      example: "qMm573WP2LsMLTIgDhKJkHIz01rc7Zeu-9XQtzt0Zym-RCPpbgPtcBxYlAbUO0nZEkDehXIYGxx-kQajo79DLBtxNWZptC9UoLbfii65cUZ5OafA-35nYFmoJK6hObMQ"
+    Gt:
+      type: string
+      format: base64
+      description: |2
+        This is an element of group Gt in the BLS12-381 elliptic curve.
+        The element is the base64-encoded value of the element's compressed
+        representation that occupies 277 bytes.
+      example: "yt6x_4fp1dfLHq0D0KFnOnqqqOL26cTWJ_W1wDLEkVcAgw-EYky8kFqhVwymm40HhjWKqavO2z25HgoDAg-0TFSmp8x6Nq7wsEvRbTTvg6g7OYSi5xsm7KDg-vl7UoUKnLi6PSx9JvLbwF8_JGRr69VeBErj9y5wiRIDeOKrPNlUk69djCtLyt8p4hwPlo0RXhdsrnqOdpf67ZCpoUZWyJ8PtxT6_envukKlcJ7q5ChlNyLxf0TgMpPR15EaDaAESP32Nln9jbXBHwrjR1CqP8gCONKBUu4aiNLyztrW8ZoVZ5vn_NVhfoiYnM0-U_oVhrys_AhkL_8FapiGinbIeY9YAfMTsZtrG6HdmtOhwM7GeCg_lL7AWt8jUWQiY-8H"
+    KeyVersion:
+      type: integer
+      description: |2
+        The version of the OPRF key that is used. An oracle server can
+        host multiple OPRF keys, which is useful if the key is occassionally
+        rotated. If no version is provided, the latest OPRF key is used.
+      minimum: 1
