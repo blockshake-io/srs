@@ -18,7 +18,7 @@ info:
 
     SRS Oracles can be organized in a cluster that uses Shamir's Secret Sharing
     (SSS) scheme to protect the private key **k**. A user needs to talk to a
-    treshold **t** out of **n** oracles to be able to compute **F(k,x,i)**.
+    treshold **t** out of **n** oracles to be able to compute **F(kₙ,x,i)**.
   contact:
     email: info@blockshake.io
 servers:
