@@ -18,15 +18,19 @@ pub async fn blind_evaluate(
     validate_public_input(&data.public_input)?;
     check_rate_limit(&mut state.redis.get_connection()?, &data.public_input)?;
 
+    let key_version = data.key_version.unwrap_or(state.default_version);
     let evaluated_element = oracle::blind_evaluate(
         state.get_ref().as_ref(),
         &data.blinded_element,
         data.public_input.clone(),
-        data.key_version.unwrap_or(state.default_version),
+        key_version,
     )
     .await?;
 
-    Ok(EvaluatedElement { evaluated_element })
+    Ok(EvaluatedElement {
+        evaluated_element,
+        key_version,
+    })
 }
 
 #[derive(Serialize, Deserialize)]
@@ -41,6 +45,7 @@ pub struct BlindEvaluateRequest {
 pub struct EvaluatedElement {
     #[serde(with = "serialization::b64_gt")]
     pub evaluated_element: Gt,
+    pub key_version: KeyVersion
 }
 
 impl Responder for EvaluatedElement {
