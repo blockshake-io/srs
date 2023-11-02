@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use reqwest::StatusCode;
 use tokio_pg_mapper::FromTokioPostgresRow;
 use tokio_postgres::types::ToSql;
@@ -14,7 +15,7 @@ pub async fn insert_cipher_db(
     application_id: i64,
     format: &str,
     ciphertext: &[u8],
-) -> Result<i64> {
+) -> Result<CipherDbListItem> {
     let client = db.get().await?;
     let stmt = include_str!("../../db/queries/cipher_db_insert.sql");
     let stmt = client.prepare(stmt).await?;
@@ -34,8 +35,15 @@ pub async fn insert_cipher_db(
     assert!(result.len() == 1);
     let row = result.first().unwrap();
     let id = row.get::<&str, i64>("id");
+    let created_at = row.get::<&str, NaiveDateTime>("created_at");
 
-    Ok(id)
+    Ok(CipherDbListItem {
+        id,
+        application_id,
+        format: format.to_owned(),
+        key_version: key_version.clone(),
+        created_at,
+    })
 }
 
 pub async fn get_cipher_dbs(
@@ -48,7 +56,7 @@ pub async fn get_cipher_dbs(
 
     let mut params: Vec<&(dyn ToSql + Sync)> = vec![&user_id.0];
     let mut stmt = "
-        select id, application_id, format, created_at
+        select id, application_id, format, key_version, created_at
         from cipher_dbs
         where user_id = $1
     "

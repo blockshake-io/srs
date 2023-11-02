@@ -67,6 +67,7 @@ pub struct CipherDbListItem {
     pub id: i64,
     pub application_id: i64,
     pub format: String,
+    pub key_version: KeyVersion,
     #[serde(with = "crate::serialization::iso8601")]
     pub created_at: NaiveDateTime,
 }

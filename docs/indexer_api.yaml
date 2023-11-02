@@ -191,11 +191,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "success"
+                $ref: '#/components/schemas/CipherDb'
         '4XX':
           description: 'Input error'
           content:
@@ -618,6 +614,8 @@ components:
         format:
           type: string
           example: "plaintext"
+        key_version:
+          $ref: '#/components/schemas/KeyVersion'
         created_at:
           $ref: '#/components/schemas/DateTime'
       required:

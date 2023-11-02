@@ -6,4 +6,4 @@ values (
     $4,
     $5
 )
-returning id;
+returning id, created_at;

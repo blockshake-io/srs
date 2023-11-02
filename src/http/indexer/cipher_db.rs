@@ -42,7 +42,7 @@ pub async fn post_cipher_db(
     session: SrsSession,
     data: web::Query<PostCipherDbRequest>,
     mut payload: Multipart,
-) -> Result<SuccessResponse> {
+) -> Result<CipherDbListItem> {
     let session = session.check_authenticated(&mut state.redis.get_connection()?)?;
 
     // read the first field
@@ -80,7 +80,7 @@ pub async fn post_cipher_db(
         }
     }
 
-    db::cipher_db::insert_cipher_db(
+    let item = db::cipher_db::insert_cipher_db(
         &state.db,
         &session.user_id,
         &session.key_version,
@@ -90,9 +90,17 @@ pub async fn post_cipher_db(
     )
     .await?;
 
-    Ok(SuccessResponse {
-        message: "success".to_owned(),
-    })
+    Ok(item)
+}
+
+impl Responder for CipherDbListItem {
+    type Body = BoxBody;
+
+    fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
+        HttpResponse::Ok()
+            .content_type(ContentType::json())
+            .body(serde_json::to_string(&self).unwrap())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
