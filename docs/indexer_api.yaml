@@ -1,40 +1,290 @@
 openapi: 3.0.3
 info:
-  title: SRS Oracle API
+  title: SRS Indexer API
   version: 0.0.1
   description: |2
-    API of the SRS Oracle that is used to evaluate the
-    [POPRF](https://www.ietf.org/archive/id/draft-irtf-cfrg-voprf-21.html)
-    protocol. In the POPRF protocol client & server interact to compute a
-    pseudo-random function (PRF) **F(k,x,i)** where
-
-    - **k** is a private key that only the server knows,
-    - **x** is a private input that only the client knows, and
-    - **i** is a public input that client & server know
-
-    The POPRF protocol guarantees that after evaluating the protocol, (a) the
-    client learns the output of function **F** but not the server's private key,
-    and (b) the server learns only the public input **i** but nothing else.
-
-    SRS Oracles can be organized in a cluster that uses Shamir's Secret Sharing
-    (SSS) scheme to protect the private key **k**. A user needs to talk to a
-    treshold **t** out of **n** oracles to be able to compute **F(k,x,i)**.
+    API of the SRS Indexer that implements the
+    [OPAQUE protocol](https://www.ietf.org/archive/id/draft-irtf-cfrg-opaque-11.html)
+    to securely authenticate users and encrypt their secrets.
   contact:
     email: info@blockshake.io
 servers:
-- url: http://localhost:8081
+- url: http://localhost:8080
   description: Development server
 tags:
-- name: Oracle
+- name: Account
+- name: Cipher-DBs
+- name: OPRF
 paths:
-  /api/blind-evaluate:
+  /api/accounts/register/step1:
     post:
-      operationId: blind_evaluate
+      operationId: account_register_step1
       description: |2
-        This corresponds to the `BlindEvaluate` function in the
-        POPRF protocol.
+        This is the first phase of OPAQUE's registration flow.
       tags:
-      - Oracle
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterStep1Request'
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterStep1Response'
+        '4XX':
+          description: 'Input error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/accounts/register/step2:
+    post:
+      operationId: account_register_step2
+      description: |2
+        This is the second phase of OPAQUE's registration flow.
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterStep2Request'
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterStep2Response'
+        '4XX':
+          description: 'Input error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/accounts/authenticate/step1:
+    post:
+      operationId: account_authenticate_step1
+      description: |2
+        This is the first phase of OPAQUE's login flow.
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticateStep1Request'
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticateStep1Response'
+        '4XX':
+          description: 'Input error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/accounts/authenticate/step2:
+    post:
+      operationId: account_authenticate_step2
+      description: |2
+        This is the second phase of OPAQUE's login flow.
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticateStep2Request'
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticateStep2Response'
+        '4XX':
+          description: 'Input error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/accounts/logout:
+    get:
+      operationId: account_logout
+      security:
+      - bearerTokenAuth: []
+      description: |2
+        Invalidates the bearer token provided in the headers
+      tags:
+      - Account
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '4XX':
+          description: 'Input error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/cipher-dbs:
+    post:
+      operationId: cipher_dbs_upload
+      description: |2
+        Upload a new encrypted database
+      security:
+      - bearerTokenAuth: []
+      tags:
+      - Cipher-DBs
+      parameters:
+      - in: query
+        name: application_id
+        description: |2
+          An ID that the client application can use to identify itself.
+          This allows an application to get only databases that were created
+          by this application.
+        required: true
+        schema:
+          type: integer
+        examples:
+          Fixture:
+            value: 1
+            summary: fixture
+      - in: query
+        name: format
+        description: |2
+          The type of the database that is uploaded (e.g., arc35, kdbx, etc.).
+        required: true
+        schema:
+          type: string
+        examples:
+          Fixture:
+            value: "plaintext"
+            summary: fixture
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "success"
+        '4XX':
+          description: 'Input error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      operationId: cipher_dbs_list
+      description: |2
+        List the user's uploaded cipher-dbs
+      security:
+      - bearerTokenAuth: []
+      tags:
+      - Cipher-DBs
+      parameters:
+      - in: query
+        name: application_id
+        description: |2
+          An ID that the client application can use to identify itself.
+          This allows an application to get only databases that were created
+          by this application.
+        schema:
+          type: integer
+      - in: query
+        name: format
+        description: |2
+          The type of the database that is uploaded (e.g., arc35, kdbx, etc.).
+        schema:
+          type: string
+        examples:
+          Fixture:
+            value: "plaintext"
+            summary: fixture
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CipherDb'
+        '4XX':
+          description: 'Input error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/cipher-dbs/{id}/download:
+    get:
+      operationId: cipher_dbs_get
+      description: |2
+        Download a cipher db
+      security:
+      - bearerTokenAuth: []
+      tags:
+      - Cipher-DBs
+      parameters:
+      - in: path
+        name: id
+        description: The ID of the cipher db
+        schema:
+          type: integer
+        required: true
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '4XX':
+          description: 'Input error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/oprf/blind-evaluate:
+    post:
+      operationId: oprf_blind_evaluate
+      description: |2
+        Evaluates the blinded element through all Oracle servers that
+        are used by this indexer and assembles their result.
+      tags:
+      - OPRF
       requestBody:
         content:
           application/json:
@@ -60,11 +310,6 @@ components:
       properties:
         public_input:
           type: string
-          description: |2
-            The public input is used for namespacing and allows the caller
-            to "seed" the OPRF function. The public input is commonly used
-            to identify a user through a username or some other (obfuscated)
-            identifier.
           minLength: 1
           maxLength: 100
           example: "info@blockshake.io"
@@ -78,22 +323,174 @@ components:
     BlindEvaluateResponse:
       type: object
       properties:
-        evaluated_element:
-          $ref: '#/components/schemas/Gt'
         key_version:
           $ref: '#/components/schemas/KeyVersion'
-        server_id:
-          type: integer
-          minimum: 1
+        evaluated_element:
+          $ref: '#/components/schemas/Gt'
+      required:
+      - key_version
+      - blinded_element
+    RegisterStep1Request:
+      type: object
+      properties:
+        username:
+          type: string
+          pattern: '^[a-zA-Z0-9._+-]{3,32}(@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})?$'
+          example: "info@blockshake.io"
+        blinded_element:
+          $ref: '#/components/schemas/G2Affine'
+      required:
+      - username
+      - blinded_element
+    RegisterStep1Response:
+      type: object
+      properties:
+        session_id:
+          $ref: '#/components/schemas/SessionId'
+        registration_response:
+          type: object
+          properties:
+            evaluated_elment:
+              $ref: '#/components/schemas/Gt'
+            server_public_key:
+              $ref: '#/components/schemas/PublicKey'
+      required:
+      - username
+      - registration_response
+    RegisterStep2Request:
+      type: object
+      properties:
+        session_id:
+          $ref: '#/components/schemas/SessionId'
+        registration_record:
+          $ref: '#/components/schemas/RegistrationRecord'
+      required:
+      - username
+      - blinded_element
+    RegisterStep2Response:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+    AuthenticateStep1Request:
+      type: object
+      properties:
+        username:
+          type: string
+        key_exchange:
+          $ref: '#/components/schemas/KeyExchange1'
+      required:
+      - username
+      - key_exchange
+    AuthenticateStep1Response:
+      type: object
+      properties:
+        session_id:
+          $ref: '#/components/schemas/SessionId'
+        key_exchange:
+          $ref: '#/components/schemas/KeyExchange2'
+      required:
+      - session_id
+      - key_exchange
+    AuthenticateStep2Request:
+      type: object
+      properties:
+        session_id:
+          $ref: '#/components/schemas/SessionId'
+        key_exchange:
+          $ref: '#/components/schemas/KeyExchange3'
+      required:
+      - session_id
+      - key_exchange
+    AuthenticateStep2Response:
+      type: object
+      properties:
+        session_key:
+          $ref: '#/components/schemas/SessionKey'
+        session_expiration:
+          $ref: '#/components/schemas/DateTime'
+      required:
+      - session_id
+      - key_exchange
+    KeyExchange1:
+      type: object
+      properties:
+        credential_request:
+          $ref: '#/components/schemas/CredentialRequest'
+        auth_request:
+          $ref: '#/components/schemas/AuthRequest'
+      required:
+      - credential_request
+      - auth_request
+    KeyExchange2:
+      type: object
+      properties:
+        credential_response:
+          $ref: '#/components/schemas/CredentialResponse'
+        auth_response:
+          $ref: '#/components/schemas/AuthResponse'
+        payload:
+          $ref: '#/components/schemas/Payload'
+      required:
+      - credential_response
+      - auth_response
+      - payload
+    KeyExchange3:
+      type: object
+      properties:
+        client_mac:
+          $ref: '#/components/schemas/AuthCode'
+      required:
+      - client_mac
+    CredentialRequest:
+      type: object
+      properties:
+        blinded_element:
+          $ref: '#/components/schemas/G2Affine'
+      required:
+      - blinded_element
+    CredentialResponse:
+      type: object
+      properties:
+        evaluated_element:
+          $ref: '#/components/schemas/Gt'
+        masking_nonce:
+          $ref: '#/components/schemas/Nonce'
+        masked_response:
+          type: string
+          format: base64
           description: |2
-            The server ID is important if the oracle is part of a cluster
-            that uses Shamir's Secret Sharing scheme. In this case, the
-            server id is the x-coordinate of the server's point on the
-            polynomial.
+            The unmasked response encodes the server's public key and the
+            registration record's envelope. The response is masked with a
+            XOR pad that is computed with the masking_nonce as input.
       required:
       - evaluated_element
-      - server_id
-      - key_version
+      - masking_nonce
+      - masked_response
+    AuthRequest:
+      type: object
+      properties:
+        client_nonce:
+          $ref: '#/components/schemas/Nonce'
+        client_public_keyshare:
+          $ref: '#/components/schemas/PublicKey'
+      required:
+      - client_nonce
+      - client_public_keyshare
+    AuthResponse:
+      type: object
+      properties:
+        server_nonce:
+          $ref: '#/components/schemas/Nonce'
+        server_public_keyshare:
+          $ref: '#/components/schemas/PublicKey'
+        server_mac:
+          $ref: '#/components/schemas/AuthCode'
+      required:
+      - server_nonce
+      - server_public_keyshare
+      - server_mac
     ErrorResponse:
       type: object
       properties:
@@ -130,6 +527,78 @@ components:
         The element is the base64-encoded value of the element's compressed
         representation that occupies 277 bytes.
       example: "yt6x_4fp1dfLHq0D0KFnOnqqqOL26cTWJ_W1wDLEkVcAgw-EYky8kFqhVwymm40HhjWKqavO2z25HgoDAg-0TFSmp8x6Nq7wsEvRbTTvg6g7OYSi5xsm7KDg-vl7UoUKnLi6PSx9JvLbwF8_JGRr69VeBErj9y5wiRIDeOKrPNlUk69djCtLyt8p4hwPlo0RXhdsrnqOdpf67ZCpoUZWyJ8PtxT6_envukKlcJ7q5ChlNyLxf0TgMpPR15EaDaAESP32Nln9jbXBHwrjR1CqP8gCONKBUu4aiNLyztrW8ZoVZ5vn_NVhfoiYnM0-U_oVhrys_AhkL_8FapiGinbIeY9YAfMTsZtrG6HdmtOhwM7GeCg_lL7AWt8jUWQiY-8H"
+    PublicKey:
+      type: string
+      format: base64
+      description: |2
+        A public key for OPAQUE's key-exchange protocol. This is a
+        Ristretto point, in compressed wire format (32 bytes long).
+      example: "0KF_IisAOG3KlUCjLjH_zmawuU48klBCQRRVYapwx1U"
+    SessionId:
+      type: string
+      pattern: '^[a-zA-Z0-9]{64}$'
+      description: Used to link independent HTTP requests
+      example: "lh8TmrOKgt0fnAylXvSMsDekNc0b6cIU1STe3WjrNKHJ2LDZ6TWjCL8J0lNn9VeI"
+    SessionKey:
+      type: string
+      pattern: '^[a-zA-Z0-9]{64}$'
+      description: |2
+        Bearer token that is used used for bearer authentication in subsequent
+        requests
+      example: "lh8TmrOKgt0fnAylXvSMsDekNc0b6cIU1STe3WjrNKHJ2LDZ6TWjCL8J0lNn9VeI"
+    Digest:
+      type: string
+      format: base64
+      description: |2
+        A binary string, 64-bytes long, that is the result of a hash function
+      example: "lh8TmrOKgt0fnAylXvSMsDekNc0b6cIU1STe3WjrNKHJ2LDZ6TWjCL8J0lNn9VeI"
+    RegistrationRecord:
+      type: object
+      properties:
+        envelope:
+          $ref: '#/components/schemas/Envelope'
+        masking_key:
+          $ref: '#/components/schemas/Digest'
+        client_public_key:
+          $ref: '#/components/schemas/PublicKey'
+        payload:
+          $ref: '#/components/schemas/Payload'
+      required:
+      - envelope
+      - masking_key
+      - client_public_key
+      - payload
+    Payload:
+      type: string
+      format: base64
+      description: |2
+        This is a binary blob of data that the client can use to encode
+            the KSF parameters.
+      example: "AAAgAAAAAAEAAAABAAAAAAAAAAA"
+    Envelope:
+      type: string
+      format: base64
+      description: |2
+        The envelope is a byte string that encodes a nonce (32 bytes) and
+        an authentication code (64 bytes)
+      example: "dLYFDLktVxb-pQuG1E5zwmfyolXPcmHiyEAfghiqKfOPKo5FhyzXtO5p03dLTaxkJEef-3AVNm2F-KRcfiAzUghsJOue-iSzMtLSpvMcpXFCIQDSJYcwA6kUx-rcI9Ag"
+    Nonce:
+      type: string
+      format: base64
+      description: A binary string, 32 bytes long
+      example: "LC8tJVzEpMz6YPU_ejLTWrdTWDY_zJPvB176qEhfzYA"
+    AuthCode:
+      type: string
+      format: base64
+      description: |2
+        A binary string, 64 bytes long, that is the result of a MAC function
+      example: "5lGj63JAfaS8T1OHU2QAxwL43ZlOrxgYD3l-yuW1QKY4UfsrnKZ_BbCfhPdp2RpD7zWD5OwCOkzmyWYH-aZvMA"
+    DateTime:
+      type: string
+      format: ISO-8601 (%Y-%m-%dT%H:%M:%S)
+      description: |2
+        Date and time in UTC timezone
+      example: "2023-11-02T06:55:21"
     KeyVersion:
       type: integer
       description: |2
@@ -137,3 +606,29 @@ components:
         host multiple OPRF keys, which is useful if the key is occassionally
         rotated. If no version is provided, the latest OPRF key is used.
       minimum: 1
+    CipherDb:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        application_id:
+          type: integer
+          example: 1
+        format:
+          type: string
+          example: "plaintext"
+        created_at:
+          $ref: '#/components/schemas/DateTime'
+      required:
+      - id
+      - application_id
+      - format
+      description: |2
+        An encrypted database that the user has uploaded.
+      minimum: 1
+  securitySchemes:
+    bearerTokenAuth:
+      type: http
+      scheme: bearer
+      description: Authentication with bearer token
