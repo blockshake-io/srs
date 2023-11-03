@@ -366,9 +366,11 @@ components:
     RegisterStep2Response:
       type: object
       properties:
-        success:
-          type: boolean
-          example: true
+        message:
+          type: string
+          example: "success"
+      required:
+      - message
     AuthenticateStep1Request:
       type: object
       properties:

@@ -97,7 +97,7 @@ pub struct RegisterStep2Request {
 
 #[derive(Serialize, Deserialize)]
 pub struct RegisterStep2Response {
-    success: bool,
+    message: String,
 }
 
 impl Responder for RegisterStep2Response {
@@ -148,5 +148,5 @@ pub async fn register_step2(
     )
     .await?;
 
-    Ok(RegisterStep2Response { success: true })
+    Ok(RegisterStep2Response { message: "success".to_owned() })
 }
