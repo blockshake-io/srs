@@ -27,14 +27,37 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RegisterStep1Request"
+              type: object
+              properties:
+                username:
+                  type: string
+                  pattern: '^[a-zA-Z0-9._+-]{3,32}(@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})?$'
+                  example: "info@blockshake.io"
+                blinded_element:
+                  $ref: "#/components/schemas/G2Affine"
+              required:
+                - username
+                - blinded_element
       responses:
         "200":
           description: "Success"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RegisterStep1Response"
+                type: object
+                properties:
+                  session_id:
+                    $ref: "#/components/schemas/SessionId"
+                  registration_response:
+                    type: object
+                    properties:
+                      evaluated_elment:
+                        $ref: "#/components/schemas/Gt"
+                      server_public_key:
+                        $ref: "#/components/schemas/PublicKey"
+                required:
+                  - username
+                  - registration_response
         "4XX":
           description: "Input error"
           content:
@@ -52,14 +75,28 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RegisterStep2Request"
+              type: object
+              properties:
+                session_id:
+                  $ref: "#/components/schemas/SessionId"
+                registration_record:
+                  $ref: "#/components/schemas/RegistrationRecord"
+              required:
+                - username
+                - blinded_element
       responses:
         "200":
           description: "Success"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RegisterStep2Response"
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "success"
+                required:
+                  - message
         "4XX":
           description: "Input error"
           content:
@@ -77,14 +114,30 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AuthenticateStep1Request"
+              type: object
+              properties:
+                username:
+                  type: string
+                key_exchange:
+                  $ref: "#/components/schemas/KeyExchange1"
+              required:
+                - username
+                - key_exchange
       responses:
         "200":
           description: "Success"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthenticateStep1Response"
+                type: object
+                properties:
+                  session_id:
+                    $ref: "#/components/schemas/SessionId"
+                  key_exchange:
+                    $ref: "#/components/schemas/KeyExchange2"
+                required:
+                  - session_id
+                  - key_exchange
         "4XX":
           description: "Input error"
           content:
@@ -102,14 +155,30 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AuthenticateStep2Request"
+              type: object
+              properties:
+                session_id:
+                  $ref: "#/components/schemas/SessionId"
+                key_exchange:
+                  $ref: "#/components/schemas/KeyExchange3"
+              required:
+                - session_id
+                - key_exchange
       responses:
         "200":
           description: "Success"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthenticateStep2Response"
+                type: object
+                properties:
+                  session_key:
+                    $ref: "#/components/schemas/SessionKey"
+                  session_expiration:
+                    $ref: "#/components/schemas/DateTime"
+                required:
+                  - session_id
+                  - key_exchange
         "4XX":
           description: "Input error"
           content:
@@ -285,14 +354,35 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/BlindEvaluateRequest"
+              type: object
+              properties:
+                public_input:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  example: "info@blockshake.io"
+                blinded_element:
+                  $ref: "#/components/schemas/G2Affine"
+                key_version:
+                  $ref: "#/components/schemas/KeyVersion"
+              required:
+                - public_input
+                - blinded_element
       responses:
         "200":
           description: "Success"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BlindEvaluateResponse"
+                type: object
+                properties:
+                  key_version:
+                    $ref: "#/components/schemas/KeyVersion"
+                  evaluated_element:
+                    $ref: "#/components/schemas/Gt"
+                required:
+                  - key_version
+                  - blinded_element
         "4XX":
           description: "Input error"
           content:
@@ -301,116 +391,26 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
-    BlindEvaluateRequest:
+    ErrorResponse:
       type: object
       properties:
-        public_input:
+        status:
+          type: integer
+          description: HTTP status code
+        code:
           type: string
-          minLength: 1
-          maxLength: 100
-          example: "info@blockshake.io"
-        blinded_element:
-          $ref: "#/components/schemas/G2Affine"
-        key_version:
-          $ref: "#/components/schemas/KeyVersion"
-      required:
-        - public_input
-        - blinded_element
-    BlindEvaluateResponse:
-      type: object
-      properties:
-        key_version:
-          $ref: "#/components/schemas/KeyVersion"
-        evaluated_element:
-          $ref: "#/components/schemas/Gt"
-      required:
-        - key_version
-        - blinded_element
-    RegisterStep1Request:
-      type: object
-      properties:
-        username:
-          type: string
-          pattern: '^[a-zA-Z0-9._+-]{3,32}(@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})?$'
-          example: "info@blockshake.io"
-        blinded_element:
-          $ref: "#/components/schemas/G2Affine"
-      required:
-        - username
-        - blinded_element
-    RegisterStep1Response:
-      type: object
-      properties:
-        session_id:
-          $ref: "#/components/schemas/SessionId"
-        registration_response:
-          type: object
-          properties:
-            evaluated_elment:
-              $ref: "#/components/schemas/Gt"
-            server_public_key:
-              $ref: "#/components/schemas/PublicKey"
-      required:
-        - username
-        - registration_response
-    RegisterStep2Request:
-      type: object
-      properties:
-        session_id:
-          $ref: "#/components/schemas/SessionId"
-        registration_record:
-          $ref: "#/components/schemas/RegistrationRecord"
-      required:
-        - username
-        - blinded_element
-    RegisterStep2Response:
-      type: object
-      properties:
+          description: Error code
         message:
           type: string
-          example: "success"
+          description: Error message
+      example:
+        status: 429
+        code: "RateLimitExceededError"
+        message: "rate limit exceeded"
       required:
+        - status
         - message
-    AuthenticateStep1Request:
-      type: object
-      properties:
-        username:
-          type: string
-        key_exchange:
-          $ref: "#/components/schemas/KeyExchange1"
-      required:
-        - username
-        - key_exchange
-    AuthenticateStep1Response:
-      type: object
-      properties:
-        session_id:
-          $ref: "#/components/schemas/SessionId"
-        key_exchange:
-          $ref: "#/components/schemas/KeyExchange2"
-      required:
-        - session_id
-        - key_exchange
-    AuthenticateStep2Request:
-      type: object
-      properties:
-        session_id:
-          $ref: "#/components/schemas/SessionId"
-        key_exchange:
-          $ref: "#/components/schemas/KeyExchange3"
-      required:
-        - session_id
-        - key_exchange
-    AuthenticateStep2Response:
-      type: object
-      properties:
-        session_key:
-          $ref: "#/components/schemas/SessionKey"
-        session_expiration:
-          $ref: "#/components/schemas/DateTime"
-      required:
-        - session_id
-        - key_exchange
+        - code
     KeyExchange1:
       type: object
       properties:
@@ -489,26 +489,6 @@ components:
         - server_nonce
         - server_public_keyshare
         - server_mac
-    ErrorResponse:
-      type: object
-      properties:
-        status:
-          type: integer
-          description: HTTP status code
-        code:
-          type: string
-          description: Error code
-        message:
-          type: string
-          description: Error message
-      example:
-        status: 429
-        code: "RateLimitExceededError"
-        message: "rate limit exceeded"
-      required:
-        - status
-        - message
-        - code
     G2Affine:
       type: string
       format: base64
