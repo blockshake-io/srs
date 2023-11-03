@@ -85,8 +85,8 @@ paths:
                 - username
                 - blinded_element
       responses:
-        "200":
-          description: "Success"
+        "201":
+          description: "User created"
           content:
             application/json:
               schema:
@@ -255,7 +255,7 @@ paths:
                   type: string
                   format: binary
       responses:
-        "200":
+        "201":
           description: "Success"
           content:
             application/json:

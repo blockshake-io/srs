@@ -104,7 +104,7 @@ impl Responder for RegisterStep2Response {
     type Body = BoxBody;
 
     fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
-        HttpResponse::Ok()
+        HttpResponse::Created()
             .content_type(ContentType::json())
             .body(serde_json::to_string(&self).unwrap())
     }
