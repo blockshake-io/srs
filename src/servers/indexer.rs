@@ -13,7 +13,7 @@ use crate::{
     http::indexer::{
         authenticate::{authenticate_step1, authenticate_step2},
         blind_evaluate::blind_evaluate,
-        cipher_db::{get_cipher_db, get_cipher_dbs, post_cipher_db},
+        cipher_data::{download_cipher_data, get_cipher_data, post_cipher_data},
         logout::logout,
         registration::{register_step1, register_step2},
     },
@@ -119,9 +119,9 @@ impl IndexerServer {
                             web::post().to(authenticate_step2),
                         )
                         .route("accounts/logout", web::get().to(logout))
-                        .route("cipher-dbs", web::post().to(post_cipher_db))
-                        .route("cipher-dbs", web::get().to(get_cipher_dbs))
-                        .route("cipher-dbs/{id}/download", web::get().to(get_cipher_db))
+                        .route("cipher-data", web::post().to(post_cipher_data))
+                        .route("cipher-data", web::get().to(get_cipher_data))
+                        .route("cipher-data/{id}/download", web::get().to(download_cipher_data))
                         .route("oprf/blind-evaluate", web::post().to(blind_evaluate)),
                 )
         })

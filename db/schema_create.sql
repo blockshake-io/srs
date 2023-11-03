@@ -8,7 +8,7 @@ create table users (
   deleted_at timestamp
 );
 
-create table cipher_dbs (
+create table cipher_data (
   id bigserial primary key,
   user_id bigint not null references users(id),
   key_version bigint not null,

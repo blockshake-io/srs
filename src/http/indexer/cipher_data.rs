@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    db, error::ErrorCode, models::CipherDbListItem, servers::indexer::AppState,
+    db, error::ErrorCode, models::CipherDataListItem, servers::indexer::AppState,
     session::SrsSession, Error, Result,
 };
 use actix_multipart::Multipart;
@@ -19,30 +19,15 @@ pub struct PostCipherDbRequest {
     pub format: String,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct SuccessResponse {
-    message: String,
-}
-
 // a file cannot be larger than 100kb;
 const MAX_UPLOAD_SIZE: usize = 102400;
 
-impl Responder for SuccessResponse {
-    type Body = BoxBody;
-
-    fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
-        HttpResponse::Ok()
-            .content_type(ContentType::json())
-            .body(serde_json::to_string(&self).unwrap())
-    }
-}
-
-pub async fn post_cipher_db(
+pub async fn post_cipher_data(
     state: web::Data<Arc<AppState>>,
     session: SrsSession,
     data: web::Query<PostCipherDbRequest>,
     mut payload: Multipart,
-) -> Result<CipherDbListItem> {
+) -> Result<CipherDataListItem> {
     let session = session.check_authenticated(&mut state.redis.get_connection()?)?;
 
     // read the first field
@@ -80,7 +65,7 @@ pub async fn post_cipher_db(
         }
     }
 
-    let item = db::cipher_db::insert_cipher_db(
+    let item = db::cipher_data::insert_cipher_data(
         &state.db,
         &session.user_id,
         &session.key_version,
@@ -93,7 +78,7 @@ pub async fn post_cipher_db(
     Ok(item)
 }
 
-impl Responder for CipherDbListItem {
+impl Responder for CipherDataListItem {
     type Body = BoxBody;
 
     fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
@@ -111,7 +96,7 @@ pub struct GetChiperDbRequest {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetChiperDbsResponse {
-    pub results: Vec<CipherDbListItem>,
+    pub results: Vec<CipherDataListItem>,
 }
 
 impl Responder for GetChiperDbsResponse {
@@ -124,14 +109,14 @@ impl Responder for GetChiperDbsResponse {
     }
 }
 
-pub async fn get_cipher_dbs(
+pub async fn get_cipher_data(
     state: web::Data<Arc<AppState>>,
     session: SrsSession,
     data: web::Query<GetChiperDbRequest>,
 ) -> Result<GetChiperDbsResponse> {
     let session = session.check_authenticated(&mut state.redis.get_connection()?)?;
 
-    let results = db::cipher_db::get_cipher_dbs(
+    let results = db::cipher_data::get_cipher_data_list(
         &state.db,
         &session.user_id,
         data.application_id,
@@ -143,28 +128,28 @@ pub async fn get_cipher_dbs(
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct GetChiperDbResponse {
-    pub ciphertext: Vec<u8>,
+pub struct GetChiperDataResponse {
+    pub cipher_data: Vec<u8>,
 }
 
-impl Responder for GetChiperDbResponse {
+impl Responder for GetChiperDataResponse {
     type Body = BoxBody;
 
     fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
         HttpResponse::Ok()
             .content_type(ContentType::octet_stream())
-            .body(self.ciphertext)
+            .body(self.cipher_data)
     }
 }
 
-pub async fn get_cipher_db(
+pub async fn download_cipher_data(
     state: web::Data<Arc<AppState>>,
     session: SrsSession,
     data: web::Path<i64>,
-) -> Result<GetChiperDbResponse> {
+) -> Result<GetChiperDataResponse> {
     let session = session.check_authenticated(&mut state.redis.get_connection()?)?;
-    let cipher_db = db::cipher_db::get_cipher_db(&state.db, *data).await?;
-    if cipher_db.user_id.0 != session.user_id.0 {
+    let cipher_data = db::cipher_data::get_cipher_data(&state.db, *data).await?;
+    if cipher_data.user_id.0 != session.user_id.0 {
         return Err(Error {
             status: StatusCode::FORBIDDEN.as_u16(),
             code: ErrorCode::ForbiddenError,
@@ -173,7 +158,7 @@ pub async fn get_cipher_db(
         });
     }
 
-    Ok(GetChiperDbResponse {
-        ciphertext: cipher_db.ciphertext,
+    Ok(GetChiperDataResponse {
+        cipher_data: cipher_data.ciphertext,
     })
 }

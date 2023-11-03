@@ -13,7 +13,7 @@ servers:
     description: Development server
 tags:
   - name: Account
-  - name: Cipher-DBs
+  - name: CipherData
   - name: OPRF
 paths:
   /api/accounts/register/step1:
@@ -211,15 +211,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-  /api/cipher-dbs:
+  /api/cipher-data:
     post:
-      operationId: cipher_dbs_upload
+      operationId: cipher_data_upload
       description: |2
         Upload a new encrypted database
       security:
         - bearerTokenAuth: []
       tags:
-        - Cipher-DBs
+        - CipherData
       parameters:
         - in: query
           name: application_id
@@ -260,7 +260,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CipherDb"
+                $ref: "#/components/schemas/CipherData"
         "4XX":
           description: "Input error"
           content:
@@ -268,13 +268,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
     get:
-      operationId: cipher_dbs_list
+      operationId: cipher_data_list
       description: |2
-        List the user's uploaded cipher-dbs
+        List the user's uploaded cipher-data
       security:
         - bearerTokenAuth: []
       tags:
-        - Cipher-DBs
+        - CipherData
       parameters:
         - in: query
           name: application_id
@@ -305,22 +305,22 @@ paths:
                   results:
                     type: array
                     items:
-                      $ref: "#/components/schemas/CipherDb"
+                      $ref: "#/components/schemas/CipherData"
         "4XX":
           description: "Input error"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-  /api/cipher-dbs/{id}/download:
+  /api/cipher-data/{id}/download:
     get:
-      operationId: cipher_dbs_get
+      operationId: cipher_data_get
       description: |2
-        Download a cipher db
+        Download cipherdata
       security:
         - bearerTokenAuth: []
       tags:
-        - Cipher-DBs
+        - CipherData
       parameters:
         - in: path
           name: id
@@ -584,7 +584,7 @@ components:
         host multiple OPRF keys, which is useful if the key is occassionally
         rotated. If no version is provided, the latest OPRF key is used.
       minimum: 1
-    CipherDb:
+    CipherData:
       type: object
       properties:
         id:

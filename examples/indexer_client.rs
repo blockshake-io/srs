@@ -9,7 +9,7 @@ use reqwest::{
 use srs::{
     error::{ErrorCode, Source},
     http::indexer::{
-        cipher_db::GetChiperDbsResponse,
+        cipher_data::GetChiperDbsResponse,
         authenticate::{
             AuthenticateStep1Request, AuthenticateStep1Response, AuthenticateStep2Request,
             AuthenticateStep2Response,
@@ -249,7 +249,7 @@ fn read_username_password() -> Result<(String, String)> {
 fn list_dbs(base_url: &str, session_key: &str) -> Result<()> {
     let client = reqwest::blocking::Client::new();
     let resp = client
-        .get(url(base_url, "api/cipher-dbs"))
+        .get(url(base_url, "api/cipher-data"))
         .header(AUTHORIZATION, bearer_token(session_key))
         .send()?;
     if resp.status().is_success() {
@@ -273,7 +273,7 @@ fn list_dbs(base_url: &str, session_key: &str) -> Result<()> {
 fn download_db(base_url: &str, session_key: &str, id: i64) -> Result<Vec<u8>> {
     let client = reqwest::blocking::Client::new();
     let resp = client
-        .get(url(base_url, &format!("api/cipher-dbs/{}/download", id)))
+        .get(url(base_url, &format!("api/cipher-data/{}/download", id)))
         .header(AUTHORIZATION, bearer_token(session_key))
         .send()?;
 
@@ -305,7 +305,7 @@ fn upload_db(base_url: &str, session_key: &str, encrypted_db: &[u8]) -> Result<(
     let resp = client
         .post(url(
             base_url,
-            "api/cipher-dbs?application_id=1&format=plain",
+            "api/cipher-data?application_id=1&format=plain",
         ))
         .header(AUTHORIZATION, bearer_token(session_key))
         .multipart(form)

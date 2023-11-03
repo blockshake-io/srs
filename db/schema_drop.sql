@@ -1,2 +1,2 @@
-drop table cipher_dbs;
+drop table cipher_data;
 drop table users;

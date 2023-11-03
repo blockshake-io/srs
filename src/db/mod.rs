@@ -1,3 +1,3 @@
-pub mod cipher_db;
+pub mod cipher_data;
 pub mod redis;
 pub mod user;

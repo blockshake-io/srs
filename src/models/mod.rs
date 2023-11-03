@@ -63,7 +63,7 @@ impl<'a> FromSql<'a> for KeyVersion {
 
 #[derive(Debug, Serialize, Deserialize, PostgresMapper)]
 #[pg_mapper(table = "user")]
-pub struct CipherDbListItem {
+pub struct CipherDataListItem {
     pub id: i64,
     pub application_id: i64,
     pub format: String,
@@ -74,7 +74,7 @@ pub struct CipherDbListItem {
 
 #[derive(Debug, Serialize, Deserialize, PostgresMapper)]
 #[pg_mapper(table = "user")]
-pub struct CipherDb {
+pub struct CipherData {
     pub id: i64,
     pub user_id: UserId,
     pub key_version: KeyVersion,
