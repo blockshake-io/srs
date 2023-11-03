@@ -9,12 +9,12 @@ info:
   contact:
     email: info@blockshake.io
 servers:
-- url: http://localhost:8080
-  description: Development server
+  - url: http://localhost:8080
+    description: Development server
 tags:
-- name: Account
-- name: Cipher-DBs
-- name: OPRF
+  - name: Account
+  - name: Cipher-DBs
+  - name: OPRF
 paths:
   /api/accounts/register/step1:
     post:
@@ -22,112 +22,112 @@ paths:
       description: |2
         This is the first phase of OPAQUE's registration flow.
       tags:
-      - Account
+        - Account
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterStep1Request'
+              $ref: "#/components/schemas/RegisterStep1Request"
       responses:
-        '200':
-          description: 'Success'
+        "200":
+          description: "Success"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RegisterStep1Response'
-        '4XX':
-          description: 'Input error'
+                $ref: "#/components/schemas/RegisterStep1Response"
+        "4XX":
+          description: "Input error"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
   /api/accounts/register/step2:
     post:
       operationId: account_register_step2
       description: |2
         This is the second phase of OPAQUE's registration flow.
       tags:
-      - Account
+        - Account
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterStep2Request'
+              $ref: "#/components/schemas/RegisterStep2Request"
       responses:
-        '200':
-          description: 'Success'
+        "200":
+          description: "Success"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RegisterStep2Response'
-        '4XX':
-          description: 'Input error'
+                $ref: "#/components/schemas/RegisterStep2Response"
+        "4XX":
+          description: "Input error"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
   /api/accounts/authenticate/step1:
     post:
       operationId: account_authenticate_step1
       description: |2
         This is the first phase of OPAQUE's login flow.
       tags:
-      - Account
+        - Account
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AuthenticateStep1Request'
+              $ref: "#/components/schemas/AuthenticateStep1Request"
       responses:
-        '200':
-          description: 'Success'
+        "200":
+          description: "Success"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthenticateStep1Response'
-        '4XX':
-          description: 'Input error'
+                $ref: "#/components/schemas/AuthenticateStep1Response"
+        "4XX":
+          description: "Input error"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
   /api/accounts/authenticate/step2:
     post:
       operationId: account_authenticate_step2
       description: |2
         This is the second phase of OPAQUE's login flow.
       tags:
-      - Account
+        - Account
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AuthenticateStep2Request'
+              $ref: "#/components/schemas/AuthenticateStep2Request"
       responses:
-        '200':
-          description: 'Success'
+        "200":
+          description: "Success"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthenticateStep2Response'
-        '4XX':
-          description: 'Input error'
+                $ref: "#/components/schemas/AuthenticateStep2Response"
+        "4XX":
+          description: "Input error"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
   /api/accounts/logout:
     get:
       operationId: account_logout
       security:
-      - bearerTokenAuth: []
+        - bearerTokenAuth: []
       description: |2
         Invalidates the bearer token provided in the headers
       tags:
-      - Account
+        - Account
       responses:
-        '200':
-          description: 'Success'
+        "200":
+          description: "Success"
           content:
             application/json:
               schema:
@@ -136,46 +136,46 @@ paths:
                   success:
                     type: boolean
                     example: true
-        '4XX':
-          description: 'Input error'
+        "4XX":
+          description: "Input error"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
   /api/cipher-dbs:
     post:
       operationId: cipher_dbs_upload
       description: |2
         Upload a new encrypted database
       security:
-      - bearerTokenAuth: []
+        - bearerTokenAuth: []
       tags:
-      - Cipher-DBs
+        - Cipher-DBs
       parameters:
-      - in: query
-        name: application_id
-        description: |2
-          An ID that the client application can use to identify itself.
-          This allows an application to get only databases that were created
-          by this application.
-        required: true
-        schema:
-          type: integer
-        examples:
-          Fixture:
-            value: 1
-            summary: fixture
-      - in: query
-        name: format
-        description: |2
-          The type of the database that is uploaded (e.g., arc35, kdbx, etc.).
-        required: true
-        schema:
-          type: string
-        examples:
-          Fixture:
-            value: "plaintext"
-            summary: fixture
+        - in: query
+          name: application_id
+          description: |2
+            An ID that the client application can use to identify itself.
+            This allows an application to get only databases that were created
+            by this application.
+          required: true
+          schema:
+            type: integer
+          examples:
+            Fixture:
+              value: 1
+              summary: fixture
+        - in: query
+          name: format
+          description: |2
+            The type of the database that is uploaded (e.g., arc35, kdbx, etc.).
+            required: true
+          schema:
+            type: string
+          examples:
+            Fixture:
+              value: "plaintext"
+              summary: fixture
       requestBody:
         content:
           multipart/form-data:
@@ -186,48 +186,48 @@ paths:
                   type: string
                   format: binary
       responses:
-        '200':
-          description: 'Success'
+        "200":
+          description: "Success"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CipherDb'
-        '4XX':
-          description: 'Input error'
+                $ref: "#/components/schemas/CipherDb"
+        "4XX":
+          description: "Input error"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
     get:
       operationId: cipher_dbs_list
       description: |2
         List the user's uploaded cipher-dbs
       security:
-      - bearerTokenAuth: []
+        - bearerTokenAuth: []
       tags:
-      - Cipher-DBs
+        - Cipher-DBs
       parameters:
-      - in: query
-        name: application_id
-        description: |2
-          An ID that the client application can use to identify itself.
-          This allows an application to get only databases that were created
-          by this application.
-        schema:
-          type: integer
-      - in: query
-        name: format
-        description: |2
-          The type of the database that is uploaded (e.g., arc35, kdbx, etc.).
-        schema:
-          type: string
-        examples:
-          Fixture:
-            value: "plaintext"
-            summary: fixture
+        - in: query
+          name: application_id
+          description: |2
+            An ID that the client application can use to identify itself.
+            This allows an application to get only databases that were created
+            by this application.
+          schema:
+            type: integer
+        - in: query
+          name: format
+          description: |2
+            The type of the database that is uploaded (e.g., arc35, kdbx, etc.).
+          schema:
+            type: string
+          examples:
+            Fixture:
+              value: "plaintext"
+              summary: fixture
       responses:
-        '200':
-          description: 'Success'
+        "200":
+          description: "Success"
           content:
             application/json:
               schema:
@@ -236,43 +236,43 @@ paths:
                   results:
                     type: array
                     items:
-                      $ref: '#/components/schemas/CipherDb'
-        '4XX':
-          description: 'Input error'
+                      $ref: "#/components/schemas/CipherDb"
+        "4XX":
+          description: "Input error"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
   /api/cipher-dbs/{id}/download:
     get:
       operationId: cipher_dbs_get
       description: |2
         Download a cipher db
       security:
-      - bearerTokenAuth: []
+        - bearerTokenAuth: []
       tags:
-      - Cipher-DBs
+        - Cipher-DBs
       parameters:
-      - in: path
-        name: id
-        description: The ID of the cipher db
-        schema:
-          type: integer
-        required: true
+        - in: path
+          name: id
+          description: The ID of the cipher db
+          schema:
+            type: integer
+          required: true
       responses:
-        '200':
-          description: 'Success'
+        "200":
+          description: "Success"
           content:
             application/octet-stream:
               schema:
                 type: string
                 format: binary
-        '4XX':
-          description: 'Input error'
+        "4XX":
+          description: "Input error"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
   /api/oprf/blind-evaluate:
     post:
       operationId: oprf_blind_evaluate
@@ -280,25 +280,25 @@ paths:
         Evaluates the blinded element through all Oracle servers that
         are used by this indexer and assembles their result.
       tags:
-      - OPRF
+        - OPRF
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BlindEvaluateRequest'
+              $ref: "#/components/schemas/BlindEvaluateRequest"
       responses:
-        '200':
-          description: 'Success'
+        "200":
+          description: "Success"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BlindEvaluateResponse'
-        '4XX':
-          description: 'Input error'
+                $ref: "#/components/schemas/BlindEvaluateResponse"
+        "4XX":
+          description: "Input error"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     BlindEvaluateRequest:
@@ -310,22 +310,22 @@ components:
           maxLength: 100
           example: "info@blockshake.io"
         blinded_element:
-          $ref: '#/components/schemas/G2Affine'
+          $ref: "#/components/schemas/G2Affine"
         key_version:
-          $ref: '#/components/schemas/KeyVersion'
+          $ref: "#/components/schemas/KeyVersion"
       required:
-      - public_input
-      - blinded_element
+        - public_input
+        - blinded_element
     BlindEvaluateResponse:
       type: object
       properties:
         key_version:
-          $ref: '#/components/schemas/KeyVersion'
+          $ref: "#/components/schemas/KeyVersion"
         evaluated_element:
-          $ref: '#/components/schemas/Gt'
+          $ref: "#/components/schemas/Gt"
       required:
-      - key_version
-      - blinded_element
+        - key_version
+        - blinded_element
     RegisterStep1Request:
       type: object
       properties:
@@ -334,35 +334,35 @@ components:
           pattern: '^[a-zA-Z0-9._+-]{3,32}(@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})?$'
           example: "info@blockshake.io"
         blinded_element:
-          $ref: '#/components/schemas/G2Affine'
+          $ref: "#/components/schemas/G2Affine"
       required:
-      - username
-      - blinded_element
+        - username
+        - blinded_element
     RegisterStep1Response:
       type: object
       properties:
         session_id:
-          $ref: '#/components/schemas/SessionId'
+          $ref: "#/components/schemas/SessionId"
         registration_response:
           type: object
           properties:
             evaluated_elment:
-              $ref: '#/components/schemas/Gt'
+              $ref: "#/components/schemas/Gt"
             server_public_key:
-              $ref: '#/components/schemas/PublicKey'
+              $ref: "#/components/schemas/PublicKey"
       required:
-      - username
-      - registration_response
+        - username
+        - registration_response
     RegisterStep2Request:
       type: object
       properties:
         session_id:
-          $ref: '#/components/schemas/SessionId'
+          $ref: "#/components/schemas/SessionId"
         registration_record:
-          $ref: '#/components/schemas/RegistrationRecord'
+          $ref: "#/components/schemas/RegistrationRecord"
       required:
-      - username
-      - blinded_element
+        - username
+        - blinded_element
     RegisterStep2Response:
       type: object
       properties:
@@ -370,91 +370,91 @@ components:
           type: string
           example: "success"
       required:
-      - message
+        - message
     AuthenticateStep1Request:
       type: object
       properties:
         username:
           type: string
         key_exchange:
-          $ref: '#/components/schemas/KeyExchange1'
+          $ref: "#/components/schemas/KeyExchange1"
       required:
-      - username
-      - key_exchange
+        - username
+        - key_exchange
     AuthenticateStep1Response:
       type: object
       properties:
         session_id:
-          $ref: '#/components/schemas/SessionId'
+          $ref: "#/components/schemas/SessionId"
         key_exchange:
-          $ref: '#/components/schemas/KeyExchange2'
+          $ref: "#/components/schemas/KeyExchange2"
       required:
-      - session_id
-      - key_exchange
+        - session_id
+        - key_exchange
     AuthenticateStep2Request:
       type: object
       properties:
         session_id:
-          $ref: '#/components/schemas/SessionId'
+          $ref: "#/components/schemas/SessionId"
         key_exchange:
-          $ref: '#/components/schemas/KeyExchange3'
+          $ref: "#/components/schemas/KeyExchange3"
       required:
-      - session_id
-      - key_exchange
+        - session_id
+        - key_exchange
     AuthenticateStep2Response:
       type: object
       properties:
         session_key:
-          $ref: '#/components/schemas/SessionKey'
+          $ref: "#/components/schemas/SessionKey"
         session_expiration:
-          $ref: '#/components/schemas/DateTime'
+          $ref: "#/components/schemas/DateTime"
       required:
-      - session_id
-      - key_exchange
+        - session_id
+        - key_exchange
     KeyExchange1:
       type: object
       properties:
         credential_request:
-          $ref: '#/components/schemas/CredentialRequest'
+          $ref: "#/components/schemas/CredentialRequest"
         auth_request:
-          $ref: '#/components/schemas/AuthRequest'
+          $ref: "#/components/schemas/AuthRequest"
       required:
-      - credential_request
-      - auth_request
+        - credential_request
+        - auth_request
     KeyExchange2:
       type: object
       properties:
         credential_response:
-          $ref: '#/components/schemas/CredentialResponse'
+          $ref: "#/components/schemas/CredentialResponse"
         auth_response:
-          $ref: '#/components/schemas/AuthResponse'
+          $ref: "#/components/schemas/AuthResponse"
         payload:
-          $ref: '#/components/schemas/Payload'
+          $ref: "#/components/schemas/Payload"
       required:
-      - credential_response
-      - auth_response
-      - payload
+        - credential_response
+        - auth_response
+        - payload
     KeyExchange3:
       type: object
       properties:
         client_mac:
-          $ref: '#/components/schemas/AuthCode'
+          $ref: "#/components/schemas/AuthCode"
       required:
-      - client_mac
+        - client_mac
     CredentialRequest:
       type: object
       properties:
         blinded_element:
-          $ref: '#/components/schemas/G2Affine'
+          $ref: "#/components/schemas/G2Affine"
       required:
-      - blinded_element
+        - blinded_element
     CredentialResponse:
       type: object
       properties:
         evaluated_element:
-          $ref: '#/components/schemas/Gt'
+          $ref: "#/components/schemas/Gt"
         masking_nonce:
-          $ref: '#/components/schemas/Nonce'
+          $ref: "#/components/schemas/Nonce"
         masked_response:
           type: string
           format: base64
@@ -463,32 +463,32 @@ components:
             registration record's envelope. The response is masked with a
             XOR pad that is computed with the masking_nonce as input.
       required:
-      - evaluated_element
-      - masking_nonce
-      - masked_response
+        - evaluated_element
+        - masking_nonce
+        - masked_response
     AuthRequest:
       type: object
       properties:
         client_nonce:
-          $ref: '#/components/schemas/Nonce'
+          $ref: "#/components/schemas/Nonce"
         client_public_keyshare:
-          $ref: '#/components/schemas/PublicKey'
+          $ref: "#/components/schemas/PublicKey"
       required:
-      - client_nonce
-      - client_public_keyshare
+        - client_nonce
+        - client_public_keyshare
     AuthResponse:
       type: object
       properties:
         server_nonce:
-          $ref: '#/components/schemas/Nonce'
+          $ref: "#/components/schemas/Nonce"
         server_public_keyshare:
-          $ref: '#/components/schemas/PublicKey'
+          $ref: "#/components/schemas/PublicKey"
         server_mac:
-          $ref: '#/components/schemas/AuthCode'
+          $ref: "#/components/schemas/AuthCode"
       required:
-      - server_nonce
-      - server_public_keyshare
-      - server_mac
+        - server_nonce
+        - server_public_keyshare
+        - server_mac
     ErrorResponse:
       type: object
       properties:
@@ -506,9 +506,9 @@ components:
         code: "RateLimitExceededError"
         message: "rate limit exceeded"
       required:
-      - status
-      - message
-      - code
+        - status
+        - message
+        - code
     G2Affine:
       type: string
       format: base64
@@ -534,12 +534,12 @@ components:
       example: "0KF_IisAOG3KlUCjLjH_zmawuU48klBCQRRVYapwx1U"
     SessionId:
       type: string
-      pattern: '^[a-zA-Z0-9]{64}$'
+      pattern: "^[a-zA-Z0-9]{64}$"
       description: Used to link independent HTTP requests
       example: "lh8TmrOKgt0fnAylXvSMsDekNc0b6cIU1STe3WjrNKHJ2LDZ6TWjCL8J0lNn9VeI"
     SessionKey:
       type: string
-      pattern: '^[a-zA-Z0-9]{64}$'
+      pattern: "^[a-zA-Z0-9]{64}$"
       description: |2
         Bearer token that is used used for bearer authentication in subsequent
         requests
@@ -554,18 +554,18 @@ components:
       type: object
       properties:
         envelope:
-          $ref: '#/components/schemas/Envelope'
+          $ref: "#/components/schemas/Envelope"
         masking_key:
-          $ref: '#/components/schemas/Digest'
+          $ref: "#/components/schemas/Digest"
         client_public_key:
-          $ref: '#/components/schemas/PublicKey'
+          $ref: "#/components/schemas/PublicKey"
         payload:
-          $ref: '#/components/schemas/Payload'
+          $ref: "#/components/schemas/Payload"
       required:
-      - envelope
-      - masking_key
-      - client_public_key
-      - payload
+        - envelope
+        - masking_key
+        - client_public_key
+        - payload
     Payload:
       type: string
       format: base64
@@ -617,13 +617,13 @@ components:
           type: string
           example: "plaintext"
         key_version:
-          $ref: '#/components/schemas/KeyVersion'
+          $ref: "#/components/schemas/KeyVersion"
         created_at:
-          $ref: '#/components/schemas/DateTime'
+          $ref: "#/components/schemas/DateTime"
       required:
-      - id
-      - application_id
-      - format
+        - id
+        - application_id
+        - format
       description: |2
         An encrypted database that the user has uploaded.
       minimum: 1

@@ -22,10 +22,10 @@ info:
   contact:
     email: info@blockshake.io
 servers:
-- url: http://localhost:8081
-  description: Development server
+  - url: http://localhost:8081
+    description: Development server
 tags:
-- name: Oracle
+  - name: Oracle
 paths:
   /api/blind-evaluate:
     post:
@@ -34,25 +34,25 @@ paths:
         This corresponds to the `BlindEvaluate` function in the
         POPRF protocol.
       tags:
-      - Oracle
+        - Oracle
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BlindEvaluateRequest'
+              $ref: "#/components/schemas/BlindEvaluateRequest"
       responses:
-        '200':
-          description: 'Success'
+        "200":
+          description: "Success"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BlindEvaluateResponse'
-        '4XX':
-          description: 'Input error'
+                $ref: "#/components/schemas/BlindEvaluateResponse"
+        "4XX":
+          description: "Input error"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     BlindEvaluateRequest:
@@ -69,19 +69,19 @@ components:
           maxLength: 100
           example: "info@blockshake.io"
         blinded_element:
-          $ref: '#/components/schemas/G2Affine'
+          $ref: "#/components/schemas/G2Affine"
         key_version:
-          $ref: '#/components/schemas/KeyVersion'
+          $ref: "#/components/schemas/KeyVersion"
       required:
-      - public_input
-      - blinded_element
+        - public_input
+        - blinded_element
     BlindEvaluateResponse:
       type: object
       properties:
         evaluated_element:
-          $ref: '#/components/schemas/Gt'
+          $ref: "#/components/schemas/Gt"
         key_version:
-          $ref: '#/components/schemas/KeyVersion'
+          $ref: "#/components/schemas/KeyVersion"
         server_id:
           type: integer
           minimum: 1
@@ -91,9 +91,9 @@ components:
             server id is the x-coordinate of the server's point on the
             polynomial.
       required:
-      - evaluated_element
-      - server_id
-      - key_version
+        - evaluated_element
+        - server_id
+        - key_version
     ErrorResponse:
       type: object
       properties:
@@ -111,9 +111,9 @@ components:
         code: "RateLimitExceededError"
         message: "rate limit exceeded"
       required:
-      - status
-      - message
-      - code
+        - status
+        - message
+        - code
     G2Affine:
       type: string
       format: base64
