@@ -50,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let resp = reqwest::blocking::Client::new()
-        .post(format!("{}/api/blind-evaluate", host))
+        .post(format!("{}/api/oprf/blind-evaluate", host))
         .header("Content-Type", "application/json")
         .body(serde_json::to_string(&request)?)
         .send()?;
