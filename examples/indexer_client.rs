@@ -9,11 +9,11 @@ use reqwest::{
 use srs::{
     error::{ErrorCode, Source},
     http::indexer::{
-        cipher_data::GetChiperDbsResponse,
         authenticate::{
             AuthenticateStep1Request, AuthenticateStep1Response, AuthenticateStep2Request,
             AuthenticateStep2Response,
         },
+        cipher_data::GetChiperDbsResponse,
         registration::{RegisterStep1Request, RegisterStep1Response, RegisterStep2Request},
     },
     ksf::KsfParams,

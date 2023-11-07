@@ -45,7 +45,7 @@ pub struct BlindEvaluateRequest {
 pub struct EvaluatedElement {
     #[serde(with = "serialization::b64_gt")]
     pub evaluated_element: Gt,
-    pub key_version: KeyVersion
+    pub key_version: KeyVersion,
 }
 
 impl Responder for EvaluatedElement {

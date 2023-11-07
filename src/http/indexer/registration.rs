@@ -148,5 +148,7 @@ pub async fn register_step2(
     )
     .await?;
 
-    Ok(RegisterStep2Response { message: "success".to_owned() })
+    Ok(RegisterStep2Response {
+        message: "success".to_owned(),
+    })
 }

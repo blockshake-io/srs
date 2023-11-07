@@ -121,7 +121,10 @@ impl IndexerServer {
                         .route("accounts/logout", web::get().to(logout))
                         .route("cipher-data", web::post().to(post_cipher_data))
                         .route("cipher-data", web::get().to(get_cipher_data))
-                        .route("cipher-data/{id}/download", web::get().to(download_cipher_data))
+                        .route(
+                            "cipher-data/{id}/download",
+                            web::get().to(download_cipher_data),
+                        )
                         .route("oprf/blind-evaluate", web::post().to(blind_evaluate)),
                 )
         })
