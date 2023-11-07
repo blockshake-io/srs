@@ -9,11 +9,57 @@ A more comprehensive description of SRS can be found in our [whitepaper][1].
 
 ## Cryptographic Underpinnings
 
-**TODO**
+SRS relies on several state-of-the-art cryptographic protocols, [Argon2](5),
+[OPRF](3), and [OPAQUE](4), to provide best-in-class security.
+
+### Argon2
+
+[Argon2](5) is a key-stretching function (KSF) that is designed to be slow and
+resource-intensive to make it slow and expensive for attackers to compute a
+large number of hash values. To control Argon2’s resource-usage, it is
+parameterized by the number of iterations that it performs (controlling CPU
+cost), the amount of memory it uses (controlling space usage), and the level of
+parallelism it is allowed to use. Argon2 is the winner of the Password Hashing
+Competition and recommended by [OWASP](6).
+
+We use Argon2 client-side during password authentication to harden a derived
+cryptographic key and make brute-force attacks expensive.
+
+### OPRF
+
+[OPRF](3) is a protocol to securely compute a pseudorandom function $H_s(p,i)$
+between a client that knows the inputs to the function $p$ and $i$, and a server
+that holds a secret key $s$. The inputs to the function, $p$ and $i$, are called
+the *private input* and the *public input*, respectively. The protocol
+guarantees that after it runs to completion:
+
+- The client learns the output of the function but nothing else (in particular not
+  the secret key $s$).
+- The server learns the public input but nothing else (neither the private input $p$
+  nor the output).
+- An outside observer can only observe the public input, but learns nothing else.
+
+In a nutshell, we use the OPRF protocol harden the user's password with the
+server-side secret key $s$. That is, using OPRF we turn a user's password into a
+high-entropy, cryptographic key that can be used to encrypt the user's secrets.
+In this case, the private input $p$ represents the user's password and the
+public input $i$ is the user's username (e.g., email address, etc.).  The public
+input $i$ is used for rate-limiting to defend against brute-force guessing
+attacks.
+
+### OPAQUE
+
+[OPAQUE](4) is a protocol for secure password-based authentication without
+reavling the passphrase to anyone. Password authentication is the most commonly
+used authentication mechanism that exists today, but the way it is traditionally
+implemented sends the user's passphrase in cleartext to the server. This makes
+the passphrase vulnerable to mishandling on the server’s side, e.g., by
+inadvertently logging all passphrases or storing them in plaintext.
 
 ## Architecture
 
 **TODO**
+
 
 ## Building
 
@@ -201,3 +247,7 @@ OPRF and `$number_shares` is the total number of oracle servers.
 
 [1]: https://blockshake.substack.com/p/srs-whitepaper
 [2]: https://www.rust-lang.org/tools/install
+[3]: https://www.ietf.org/archive/id/draft-irtf-cfrg-voprf-21.html
+[4]: https://www.ietf.org/archive/id/draft-irtf-cfrg-opaque-11.html
+[5]: https://www.rfc-editor.org/rfc/rfc9106.html
+[6]: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#argon2id
