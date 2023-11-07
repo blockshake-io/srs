@@ -35,11 +35,11 @@ guarantees that after it runs to completion:
 
 - The client learns the output of the function but nothing else (in particular not
   the secret key $s$).
-- The server learns the public input but nothing else (neither the private input $p$
-  nor the output).
+- The server learns the public input $i$ but nothing else (neither the private input
+  $p$ nor the output).
 - An outside observer can only observe the public input, but learns nothing else.
 
-In a nutshell, we use the OPRF protocol harden the user's password with the
+In a nutshell, we use the OPRF protocol to harden the user's password with the
 server-side secret key $s$. That is, using OPRF we turn a user's password into a
 high-entropy, cryptographic key that can be used to encrypt the user's secrets.
 In this case, the private input $p$ represents the user's password and the
@@ -56,10 +56,14 @@ implemented sends the user's passphrase in cleartext to the server. This makes
 the passphrase vulnerable to mishandling on the server’s side, e.g., by
 inadvertently logging all passphrases or storing them in plaintext.
 
+We use OPAQUE as a secure authentication mechanism for SRS and its services. For
+example,  we offer a Vault service where users can safely store their encrypted
+account secrets.
+
+
 ## Architecture
 
 **TODO**
-
 
 ## Building
 
