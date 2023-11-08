@@ -190,18 +190,6 @@ cargo run --bin oracle_server
 The following *environment variables* need to be set for an indexer server:
 - `SRV_ADDRESS`: This is the address that the server binds to (e.g., `127.0.0.1` or `localhost`)
 - `SRV_PORT`: This is the port that the server binds to (e.g., `8081`)
-- `SRV_SECRET_KEYS`: This represents the OPRF key material(s) that the server uses,
-   explained in detail below.
-- `SRV_DEFAULT_KEY_VERSION`: This is an integer that denotes which OPRF key to use
-- `REDIS_CONNECTION_STRING`: This is the connection string that allows the server to
-   access a redis instance
-
-
-## Running SRS
-
-The following *environment variables* need to be set for an indexer server:
-- `SRV_ADDRESS`: This is the address that the server binds to (e.g., `127.0.0.1` or `localhost`)
-- `SRV_PORT`: This is the port that the server binds to (e.g., `8081`)
 - `SRV_KE_SEED`: This is the seed that derives the key pair used in OPAQUE's key exchange
 - `SRV_KE_INFO`: This is the info string that is used to derive the key pair used
    in OPAQUE's key exchange
