@@ -222,7 +222,7 @@ The following *environment variables* need to be set for an indexer server:
 Like with the oracle server, an example `.env` file that contains these environment
 variables can be found in the file `.indexer.env`.
 
-#### Executing Oracle Server
+#### Executing Indexer Server
 
 Once compiled in release mode and configured, an indexer can be executed by
 calling:
@@ -236,6 +236,15 @@ execute an indexer server:
 
 ```sh
 cargo run --bin indexer_server
+```
+
+### Example Indexer Client
+
+We provide a toy client for the indexer service to demonstrate how to interact
+with it.
+
+```
+cargo run --example indexer_client
 ```
 
 ## API

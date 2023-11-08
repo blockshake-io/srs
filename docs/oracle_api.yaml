@@ -6,19 +6,20 @@ info:
     API of the SRS Oracle that is used to evaluate the
     [POPRF](https://www.ietf.org/archive/id/draft-irtf-cfrg-voprf-21.html)
     protocol. In the POPRF protocol client & server interact to compute a
-    pseudo-random function (PRF) **F(k,x,i)** where
+    pseudo-random function (PRF) **H(s,p,i)** where
 
-    - **k** is a private key that only the server knows,
-    - **x** is a private input that only the client knows, and
-    - **i** is a public input that client & server know
+    - **s** is a secret key that only the server knows,
+    - **p** is a private input that only the client knows, and
+    - **i** is a public input that the client knows and the server learns
 
     The POPRF protocol guarantees that after evaluating the protocol, (a) the
-    client learns the output of function **F** but not the server's private key,
-    and (b) the server learns only the public input **i** but nothing else.
+    client learns the output of function **H** but not the server's secret key
+    **s**, and (b) the server learns only the public input **i** but nothing
+    else.
 
     SRS Oracles can be organized in a cluster that uses Shamir's Secret Sharing
-    (SSS) scheme to protect the private key **k**. A user needs to talk to a
-    treshold **t** out of **n** oracles to be able to compute **F(kₙ,x,i)**.
+    (SSS) scheme to protect the private key **s**. A user needs to talk to a
+    treshold **t** out of **n** oracles to be able to compute **H(sₙ,p,i)**.
   contact:
     email: info@blockshake.io
 servers:
