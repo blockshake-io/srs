@@ -26,7 +26,7 @@ use srs_opaque::{
     opaque::{ClientLoginFlow, ClientRegistrationFlow},
     primitives::{self, derive_keypair},
 };
-use std::io::{stdin, stdout, Write};
+use std::{io::{stdin, stdout, Write}, time::Instant};
 use tempfile::NamedTempFile;
 use typenum::{Unsigned, U12, U32};
 
@@ -70,13 +70,8 @@ fn register(
     username: &str,
     password: &str,
     server_public_key: &PublicKey,
+    ksf_params: &KsfParams,
 ) -> Result<()> {
-    let ksf_params = KsfParams {
-        m_cost: 8192,
-        p_cost: 1,
-        t_cost: 1,
-        output_len: None,
-    };
     let payload = ksf_params.to_bytes()?;
 
     let rng = thread_rng();
@@ -379,17 +374,26 @@ struct Login {
 struct Client {
     base_url: String,
     login: Option<Login>,
+    ksf_params: KsfParams,
 }
 
 impl Client {
     fn new(base_url: String) -> Self {
+        let ksf_params = KsfParams {
+            m_cost: 8192,
+            p_cost: 1,
+            t_cost: 1,
+            output_len: None,
+        };
         Self {
             base_url,
             login: None,
+            ksf_params,
         }
     }
 
     fn run(&mut self) -> Result<()> {
+        println!("Demo client for SRS, enter 'help' to get started\n");
         loop {
             if let Some(login) = self.login.as_ref() {
                 if let Some(_) = login.encrypted_db.as_ref() {
@@ -420,6 +424,8 @@ impl Client {
                 "download-db" => self.command_download_db(parameters),
                 "upload-db" => self.command_upload_db(),
                 "edit-db" => self.command_edit_db(),
+                "show-argon2" => self.command_show_argon2(),
+                "configure-argon2" => self.command_configure_argon2(),
                 "help" => self.command_help(),
                 "exit" => break,
                 "" => Ok(()),
@@ -447,6 +453,8 @@ impl Client {
         println!("- download-db $ID: download ciphertext $ID");
         println!("- upload-db: upload the encrypted database that's currently in memory");
         println!("- edit-db: decrypt the currently loaded DB, edit it, and encrypt it again");
+        println!("- show-argon2: show current Argon2 KSF configuration");
+        println!("- configure-argon2: configure Argon2 KSF");
         println!("- help: print this message");
         println!("- exit: exit the app");
         std::io::stdout().flush()?;
@@ -461,6 +469,7 @@ impl Client {
             &username,
             &password,
             &server_keypair.public_key,
+            &self.ksf_params,
         )?;
         self.login = None;
         Ok(())
@@ -587,6 +596,50 @@ impl Client {
         // encrypt the data
         let encrypted_db = encrypt(&unencrypted_db, &login.opaque_export_key)?;
         self.login.as_mut().unwrap().encrypted_db = Some(encrypted_db);
+
+        Ok(())
+    }
+
+    fn command_show_argon2(&self) -> Result<()> {
+        println!("Current Argon2 configuration:");
+        println!("- Memory (bytes): {}", self.ksf_params.m_cost);
+        println!("- Iterations: {}", self.ksf_params.t_cost);
+        println!("- Parallelism: {}", self.ksf_params.p_cost);
+        Ok(())
+    }
+
+    fn command_configure_argon2(&mut self) -> Result<()> {
+        fn read_u32(prompt: &str, default: u32) -> u32 {
+            print!("{} [default {}]: ", prompt, default);
+            std::io::stdout().flush().unwrap();
+            let mut buffer = String::new();
+            std::io::stdin().read_line(&mut buffer).expect("ok");
+            if buffer.is_empty() {
+                default
+            } else {
+                buffer.trim().parse().unwrap_or(default)
+            }
+        }
+
+        println!("Configure and test Argon2 parameters");
+        let m_cost = read_u32("Memory (bytes)", self.ksf_params.m_cost);
+        let t_cost = read_u32("Iterations", self.ksf_params.t_cost);
+        let p_cost = read_u32("Parallelism", self.ksf_params.p_cost);
+
+        let config = KsfParams {
+            m_cost,
+            t_cost,
+            p_cost,
+            output_len: None,
+        };
+
+        println!("\nTesting Argon2 configuration {}", config);
+        let start = Instant::now();
+        argon2_stretch(&[0, 0, 0], &config)?;
+        let duration = start.elapsed();
+        println!("Computing Argon2 took {:?}", duration);
+
+        self.ksf_params = config;
 
         Ok(())
     }

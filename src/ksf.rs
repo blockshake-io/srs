@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::{io::Write, fmt::Display};
 
 use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
@@ -46,5 +46,16 @@ impl KsfParams {
                 Some(output_len)
             },
         })
+    }
+}
+
+impl Display for KsfParams {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "(m_cost: {}, t_cost: {}, p_cost: {})",
+            self.m_cost,
+            self.t_cost,
+            self.p_cost,
+        ))
     }
 }
