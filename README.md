@@ -298,6 +298,14 @@ cargo run --bin shamir_config $treshold $number_shares
 where, `$threshold` is the number of oracle servers that are needed to evaluate
 OPRF and `$number_shares` is the total number of oracle servers.
 
+## License
+
+This project is licensed under the [AGPLv3 license](./LICENSE.md).
+
+Contribution Unless you explicitly state otherwise, any contribution
+intentionally submitted for inclusion in Tokio by you, shall be licensed as
+AGPLv3, without any additional terms or conditions.
+
 [1]: https://blockshake.substack.com/p/srs-whitepaper
 [2]: https://www.rust-lang.org/tools/install
 [3]: https://www.ietf.org/archive/id/draft-irtf-cfrg-voprf-21.html
