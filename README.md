@@ -9,20 +9,20 @@ A more comprehensive description of SRS can be found in our [whitepaper][1].
 
 ## Cryptographic Underpinnings
 
-SRS relies on several state-of-the-art cryptographic protocols, [Argon2](5),
-[OPRF](3), and [OPAQUE](4), to provide best-in-class security.
+SRS relies on several state-of-the-art cryptographic protocols ([Argon2](5),
+[OPRF](3), and [OPAQUE](4) etc.) to provide best-in-class security.
 
 ### Argon2
 
 [Argon2](5) is a key-stretching function (KSF) that is designed to be slow and
-resource-intensive to make it slow and expensive for attackers to compute a
-large number of hash values. To control Argon2’s resource-usage, it is
+resource-intensive to make it time-consuming and expensive for attackers to
+compute a large number of hash values. To control Argon2’s resource-usage, it is
 parameterized by the number of iterations that it performs (controlling CPU
 cost), the amount of memory it uses (controlling space usage), and the level of
 parallelism it is allowed to use. Argon2 is the winner of the Password Hashing
 Competition and recommended by [OWASP](6).
 
-We use Argon2 client-side during password authentication to harden a derived
+We use Argon2 client-side during authentication to harden a derived
 cryptographic key and make brute-force attacks expensive.
 
 ### OPRF
@@ -36,34 +36,54 @@ guarantees that after it runs to completion:
 - The client learns the output of the function but nothing else (in particular not
   the secret key $s$).
 - The server learns the public input $i$ but nothing else (neither the private input
-  $p$ nor the output).
+  $p$ nor the output of $H$).
 - An outside observer can only observe the public input, but learns nothing else.
 
-In a nutshell, we use the OPRF protocol to harden the user's password with the
-server-side secret key $s$. That is, using OPRF we turn a user's password into a
-high-entropy, cryptographic key that can be used to encrypt the user's secrets.
-In this case, the private input $p$ represents the user's password and the
-public input $i$ is the user's username (e.g., email address, etc.).  The public
-input $i$ is used for rate-limiting to defend against brute-force guessing
-attacks.
+In a nutshell, we use the OPRF protocol to harden the user's passphrase with the
+server-side secret key $s$. That is, using OPRF we turn a user's passphrase into
+a high-entropy, cryptographic key that can be used to encrypt the user's
+secrets.  In this case, the private input $p$ represents the user's passphrase
+and the public input $i$ is the user's username (e.g., email address, etc.).
+The public input $i$ is used for rate-limiting to defend against brute-force
+guessing attacks.
 
 ### OPAQUE
 
 [OPAQUE](4) is a protocol for secure password-based authentication without
-reavling the passphrase to anyone. Password authentication is the most commonly
-used authentication mechanism that exists today, but the way it is traditionally
-implemented sends the user's passphrase in cleartext to the server. This makes
-the passphrase vulnerable to mishandling on the server’s side, e.g., by
-inadvertently logging all passphrases or storing them in plaintext.
+reavling the passphrase to a server or anyone else. Password authentication is
+the most commonly used authentication mechanism that exists today, but the way
+it is traditionally implemented sends the user's passphrase in cleartext to the
+server (but hopefully encrypted in transit by TLS). This makes the passphrase
+vulnerable to mishandling on the server’s side, e.g., by inadvertently logging
+all passphrases or storing them in plaintext.
 
-We use OPAQUE as a secure authentication mechanism for SRS and its services. For
-example,  we offer a Vault service where users can safely store their encrypted
-account secrets.
+We use OPAQUE as a secure authentication mechanism for SRS's indexer service to
+make sure that a user's passphrase is protected. OPAQUE comes with the OPRF
+protocol built in and this allows us to derive a strong cryptographic key that
+only the user is able to compute and that can be used to securely encrypt the
+user's secrets.
 
 
 ## Architecture
 
-**TODO**
+SRS consists of two services, oracles and indexers.
+
+### Oracle Service
+
+The oracle service provides the server-side component necessary to run the OPRF
+protocol and it holds the secret key $s$. To increase the security of SRS, we
+use a federated set of oracle servers where each server holds a share of the
+OPRF key $s$. We use [Shamir's Secret Sharing (SSS)](#shamirs-secret-sharing) to
+split $s$ into pieces and we require that a threshold $t$ out of all $n$ oracle
+servers cooperate to recover $s$.
+
+### Indexer Service
+
+The SRS indexer service is the main service that users interact with to back-up
+and recover their secrets. The indexer uses OPAQUE to authenticate a user and in
+that process it communicates with the oracle servers to assemble the results of
+the oracle servers.
+
 
 ## Building
 
@@ -117,9 +137,11 @@ OPRF key shares. We use [Shamir's Secret Sharing (SSS)](#shamirs-secret-sharing)
 to split up the OPRF key across a number of oracle servers. Each key share has
 an `index` that represents the $x$-coordinate of the point and a `share` that
 represents its $y$-coordinate (see [here](#shamirs-secret-sharing) for details).
-In addition, secret OPRF keys are versioned and an oracle server supports
-multiple such keys in order to support, e.g., key rotations. `SRV_SECRET_KEYS`
-is a string-representation of a JSON array that looks like this:
+The `share` is an element of the BLS12-381 scalar field and it is serialized as
+the base64-encoded big-endian value of the 32-byte scalar. In addition, secret
+OPRF keys are versioned and an oracle server supports multiple such keys in
+order to support, e.g., key rotations.  `SRV_SECRET_KEYS` is a
+string-representation of a JSON array that looks like this:
 
 ```json
 [
@@ -215,6 +237,16 @@ execute an indexer server:
 ```sh
 cargo run --bin indexer_server
 ```
+
+## API
+
+The oracle and indexer servers can be accessed via HTTP and their API is
+specified in OpenAPI format:
+- [Oracle API](./docs/oracle_api.yaml)
+- [Indexer API](./docs/indexer_api.yaml)
+
+You can render the OpenAPI files with an [appropriate editor](https://editor.swagger.io/).
+
 
 ## Shamir's Secret Sharing
 
