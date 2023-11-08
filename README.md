@@ -1,9 +1,13 @@
 # Secrets Recovery Service (SRS)
 
-SRS is a protocol to securely encrypt client-side secrets, store them on SRS
-servers, and later recover them when necessary.
-
-- talk about use case: crypto wallets
+SRS is a service to securely store and recover user secrets like passwords or
+seed phrases for crypto accounts, etc. Web3 and DeFi require users to take
+responsibility for securing private keys and keeping account secrets safe is a
+central challenge. The current system of writing down long recovery phrases
+places a high burden on the user and can compromise the essential properties of
+security, availability, and usability. To address these challenges, SRS proposes
+a chain- and wallet-agnostic service that stores user secrets securely with
+remarkably short recovery phrases.
 
 A more comprehensive description of SRS can be found in our [whitepaper][1].
 
@@ -246,6 +250,10 @@ with it.
 ```
 cargo run --example indexer_client
 ```
+
+This example provides a command-line interface for the indexer and you can
+register users, login, encrypt & upload secrets, and download & decrypt them
+again.
 
 ## API
 
