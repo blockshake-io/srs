@@ -264,7 +264,7 @@ $n-t$ oracle outages and still be able to recover the OPRF key.
 
 The $n$ key shares are points on a randomly generated polynomial, hence each key
 share consists of two values corresponding to the $x$- and $y$-coordinates of
-that point. The $x$-coordinate is typically a small an integer, e.g., 1, 2, etc.
+that point. The $x$-coordinate is typically a small integer, e.g., 1, 2, etc.
 and in our case the $y$-coordinate represents a scalar in the BLS12-381 scalar
 field (these are large, 32-byte integers). The basic idea of SSS is that with
 $t$ points on a curve you can uniquely describe a degree $t-1$ polynomial, yet
