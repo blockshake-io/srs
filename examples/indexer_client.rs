@@ -602,7 +602,7 @@ impl Client {
 
     fn command_show_argon2(&self) -> Result<()> {
         println!("Current Argon2 configuration:");
-        println!("- Memory (bytes): {}", self.ksf_params.m_cost);
+        println!("- Memory (KiB): {}", self.ksf_params.m_cost);
         println!("- Iterations: {}", self.ksf_params.t_cost);
         println!("- Parallelism: {}", self.ksf_params.p_cost);
         Ok(())
@@ -622,7 +622,7 @@ impl Client {
         }
 
         println!("Configure and test Argon2 parameters");
-        let m_cost = read_u32("Memory (bytes)", self.ksf_params.m_cost);
+        let m_cost = read_u32("Memory (KiB)", self.ksf_params.m_cost);
         let t_cost = read_u32("Iterations", self.ksf_params.t_cost);
         let p_cost = read_u32("Parallelism", self.ksf_params.p_cost);
 
