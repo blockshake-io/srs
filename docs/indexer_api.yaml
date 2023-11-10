@@ -118,6 +118,7 @@ paths:
               properties:
                 username:
                   type: string
+                  example: "info@blockshake.io"
                 key_exchange:
                   $ref: "#/components/schemas/KeyExchange1"
               required:
