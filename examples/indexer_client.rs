@@ -6,6 +6,7 @@ use reqwest::{
     blocking::multipart,
     header::{AUTHORIZATION, CONTENT_TYPE},
 };
+use serde::Deserialize;
 use srs::{
     error::{ErrorCode, Source},
     http::indexer::{
@@ -21,10 +22,11 @@ use srs::{
 };
 use srs_opaque::{
     ciphersuite::{AuthCode, Digest},
-    keypair::PublicKey,
+    keypair::{PublicKey, KeyPair},
     messages::RegistrationRecord,
     opaque::{ClientLoginFlow, ClientRegistrationFlow},
-    primitives::{self, derive_keypair},
+    primitives,
+    serialization::{b64_public_key, b64_secret_key, self},
 };
 use std::{io::{stdin, stdout, Write}, time::Instant};
 use tempfile::NamedTempFile;
@@ -33,6 +35,13 @@ use typenum::{Unsigned, U12, U32};
 const SERVER_IDENTITY: &str = "srs.blockshake.io";
 const ENCRYPTION_KEY: &[u8; 13] = b"EncryptionKey";
 type NonceSize = U12;
+
+#[derive(Debug, Deserialize)]
+pub struct Config {
+    pub srv_address: String,
+    #[serde(with = "serialization::b64_public_key")]
+    pub srv_ke_public_key: PublicKey,
+}
 
 fn argon2_stretch(input: &[u8], params: &KsfParams) -> srs_opaque::Result<Digest> {
     let argon2 = argon2::Argon2::new(
@@ -373,12 +382,13 @@ struct Login {
 
 struct Client {
     base_url: String,
+    srv_ke_public_key: PublicKey,
     login: Option<Login>,
     ksf_params: KsfParams,
 }
 
 impl Client {
-    fn new(base_url: String) -> Self {
+    fn new(base_url: String, srv_ke_public_key: PublicKey) -> Self {
         let ksf_params = KsfParams {
             m_cost: 8192,
             p_cost: 1,
@@ -387,6 +397,7 @@ impl Client {
         };
         Self {
             base_url,
+            srv_ke_public_key,
             login: None,
             ksf_params,
         }
@@ -426,6 +437,7 @@ impl Client {
                 "edit-db" => self.command_edit_db(),
                 "show-argon2" => self.command_show_argon2(),
                 "configure-argon2" => self.command_configure_argon2(),
+                "generate-keypair" => self.command_generate_keypair(),
                 "help" => self.command_help(),
                 "exit" => break,
                 "" => Ok(()),
@@ -463,12 +475,11 @@ impl Client {
 
     fn command_register(&mut self) -> Result<()> {
         let (username, password) = read_username_password()?;
-        let server_keypair = derive_keypair(b"foo", b"bar")?;
         register(
             &self.base_url,
             &username,
             &password,
-            &server_keypair.public_key,
+            &self.srv_ke_public_key,
             &self.ksf_params,
         )?;
         self.login = None;
@@ -643,9 +654,28 @@ impl Client {
 
         Ok(())
     }
+
+    fn command_generate_keypair(&self) -> Result<()> {
+        let mut rng = thread_rng();
+        let keypair = KeyPair::random(&mut rng);
+        println!("Public key:  {}", b64_public_key::encode(&keypair.public_key));
+        println!("Private key: {}", b64_secret_key::encode(&keypair.secret_key));
+        Ok(())
+    }
 }
 
 fn main() -> Result<()> {
-    let base_url = "http://localhost:8080".to_owned();
-    Client::new(base_url).run()
+    // initialize logging
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+
+    // read environment variables
+    dotenv::dotenv().ok();
+    let config: Config = config::Config::builder()
+        .add_source(config::Environment::default())
+        .build()
+        .ok()
+        .and_then(|c| c.try_deserialize().ok())
+        .ok_or_else(|| Error::internal("Could not parse configuration variables"))?;
+
+    Client::new(config.srv_address, config.srv_ke_public_key).run()
 }

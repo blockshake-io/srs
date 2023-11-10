@@ -190,14 +190,13 @@ cargo run --bin oracle_server
 The following *environment variables* need to be set for an indexer server:
 - `SRV_ADDRESS`: This is the address that the server binds to (e.g., `127.0.0.1` or `localhost`)
 - `SRV_PORT`: This is the port that the server binds to (e.g., `8081`)
-- `SRV_KE_SEED`: This is the seed that derives the key pair used in OPAQUE's key exchange
-- `SRV_KE_INFO`: This is the info string that is used to derive the key pair used
-   in OPAQUE's key exchange
+- `SRV_KE_PUBLIC_KEY`: This is the server's public key in the key-exchange protocol
+- `SRV_KE_PRIVATE_KEY`: This is the server's private key in the key-exchange protocol
 - `SRV_IDENTITY`: The name of the server (e.g., `srs.blockshake.io`)
 - `SRV_OPRF_HOSTS`: This is a whitespace separated list of hosts that run oracle servers
   (e.g., `"http://localhost:8081 http://localhost:8082 http://localhost:8083"`)
 - `SRV_OPRF_THRESHOLD`: This denotes the threshold of Oracle servers that need to be
-  available to perform Shamir's secret sharing.
+  available to perform Shamir's secret sharing
 - `SRV_USERNAME_OPRF_KEY`: This is a base64-encoded scalar in BLS12-381 that is used
   to blind usernames before they are sent to oracle servers
 - `SRV_DEFAULT_KEY_VERSION`: This is the OPRF key version to use by default
@@ -233,7 +232,12 @@ cargo run --bin indexer_server
 ### Example Indexer Client
 
 We provide a toy client for the indexer service to demonstrate how to interact
-with it.
+with it. It expects the following environment variables:
+
+- `SRV_ADDRESS`: This is the indexer's address (e.g., `http://localhost:8080`)
+- `SRV_KE_PUBLIC_KEY`: This is the server's public key in the key-exchange protocol
+
+To run the client:
 
 ```
 cargo run --example indexer_client

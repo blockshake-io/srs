@@ -1,6 +1,6 @@
 use blstrs::Scalar;
 use config::Config;
-use srs_opaque::{primitives::derive_keypair, serialization};
+use srs_opaque::{serialization, keypair::{PublicKey, SecretKey, KeyPair}};
 use tokio_postgres::NoTls;
 
 use srs::{
@@ -11,13 +11,15 @@ use srs::{
 
 use serde::Deserialize;
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct ServerConfig {
     pub srv_identity: String,
     pub srv_address: String,
     pub srv_port: u16,
-    pub srv_ke_seed: String,
-    pub srv_ke_info: String,
+    #[serde(with = "serialization::b64_public_key")]
+    pub srv_ke_public_key: PublicKey,
+    #[serde(with = "serialization::b64_secret_key")]
+    pub srv_ke_private_key: SecretKey,
     pub srv_oprf_hosts: String,
     pub srv_oprf_threshold: u16,
     #[serde(with = "serialization::b64_scalar")]
@@ -60,10 +62,10 @@ async fn main() -> Result<()> {
 
     let redis_client = redis::Client::open(server_config.redis_connection_string)?;
 
-    let ke_keypair = derive_keypair(
-        server_config.srv_ke_seed.as_bytes(),
-        server_config.srv_ke_info.as_bytes(),
-    )?;
+    let ke_keypair = KeyPair {
+        public_key: server_config.srv_ke_public_key,
+        secret_key: server_config.srv_ke_private_key,
+    };
 
     // the OPRF hosts environment variable is whitespace-separated string of hosts
     let oprf_hosts: Vec<String> = server_config
