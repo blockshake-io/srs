@@ -43,10 +43,21 @@ pub struct Config {
     pub srv_ke_public_key: PublicKey,
 }
 
+fn format_m_cost(mut value: u32) -> String {
+    value *= 1024;
+    let labels = vec!["bytes", "kb", "mb", "gb"];
+    let mut pos = 0;
+    while value / 1000 >= 1 && pos+1 < labels.len() {
+        pos += 1;
+        value /= 1000;
+    }
+    format!("{} {}", value, labels[pos])
+}
+
 fn argon2_stretch(input: &[u8], params: &KsfParams) -> srs_opaque::Result<Digest> {
     print!("applying Argon2 with parameters \
         (m_cost: {}, t_cost: {}, p_cost: {})... ",
-        params.m_cost,
+        format_m_cost(params.m_cost),
         params.t_cost,
         params.p_cost);
     stdout().flush().unwrap();
@@ -620,7 +631,7 @@ impl Client {
 
     fn command_show_argon2(&self) -> Result<()> {
         println!("Current Argon2 configuration:");
-        println!("- Memory (KiB): {}", self.ksf_params.m_cost);
+        println!("- Memory: {}", format_m_cost(self.ksf_params.m_cost));
         println!("- Iterations: {}", self.ksf_params.t_cost);
         println!("- Parallelism: {}", self.ksf_params.p_cost);
         Ok(())
@@ -640,7 +651,7 @@ impl Client {
         }
 
         println!("Configure and test Argon2 parameters");
-        let m_cost = read_u32("Memory (KiB)", self.ksf_params.m_cost);
+        let m_cost = read_u32("Memory", self.ksf_params.m_cost * 1000) / 1024;
         let t_cost = read_u32("Iterations", self.ksf_params.t_cost);
         let p_cost = read_u32("Parallelism", self.ksf_params.p_cost);
 
@@ -651,7 +662,6 @@ impl Client {
             output_len: None,
         };
 
-        println!("\nTesting Argon2 configuration {}", config);
         let start = Instant::now();
         argon2_stretch(&[0, 0, 0], &config)?;
         let duration = start.elapsed();
