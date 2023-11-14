@@ -44,6 +44,12 @@ pub struct Config {
 }
 
 fn argon2_stretch(input: &[u8], params: &KsfParams) -> srs_opaque::Result<Digest> {
+    print!("applying Argon2 with parameters \
+        (m_cost: {}, t_cost: {}, p_cost: {})... ",
+        params.m_cost,
+        params.t_cost,
+        params.p_cost);
+    stdout().flush().unwrap();
     let argon2 = argon2::Argon2::new(
         argon2::Algorithm::Argon2id,
         argon2::Version::V0x13,
@@ -59,6 +65,7 @@ fn argon2_stretch(input: &[u8], params: &KsfParams) -> srs_opaque::Result<Digest
     argon2
         .hash_password_into(&input, &[0; argon2::RECOMMENDED_SALT_LEN], &mut output)
         .map_err(|_| srs_opaque::error::InternalError::KsfError)?;
+    println!("done");
     Ok(output)
 }
 
@@ -243,7 +250,7 @@ fn read_username_password() -> Result<(String, String)> {
     std::io::stdout().flush().unwrap();
     std::io::stdin().read_line(&mut username)?;
 
-    let password = rpassword::prompt_password("Password: ").unwrap();
+    let password = rpassword::prompt_password("Passphrase: ").unwrap();
     Ok((
         username.trim_end().to_owned(),
         password.trim_end().to_owned(),
