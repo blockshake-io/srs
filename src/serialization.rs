@@ -1,6 +1,5 @@
 pub mod iso8601 {
     use chrono::NaiveDateTime;
-    use log::warn;
     use serde::{Deserialize, Serialize};
     use serde::{Deserializer, Serializer};
 
@@ -12,7 +11,6 @@ pub mod iso8601 {
 
     pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<NaiveDateTime, D::Error> {
         let datetime = String::deserialize(d)?;
-        warn!("datetime to parse: {}", datetime);
         let datetime = NaiveDateTime::parse_from_str(&datetime, ISO8601_FORMAT)
             .map_err(|_| serde::de::Error::custom("Deserialization error for rfc3339 timestamp"))?;
         Ok(datetime)
