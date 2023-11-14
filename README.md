@@ -11,6 +11,15 @@ remarkably short recovery phrases.
 
 A more comprehensive description of SRS can be found in our [whitepaper][1].
 
+Development of SRS is funded by Protocol Labs through the [RFP-014 Research Grant][7].
+
+## Contributing
+
+SRS is under active development and we are working towards our first production
+release. If you have any questions, are interested in using SRS, or you want to
+contribute, shoot us an email at
+[info@blockshake.io](mailto:info@blockshake.io).
+
 ## Cryptographic Underpinnings
 
 SRS relies on several state-of-the-art cryptographic protocols ([Argon2](5),
@@ -304,3 +313,4 @@ AGPLv3, without any additional terms or conditions.
 [4]: https://www.ietf.org/archive/id/draft-irtf-cfrg-opaque-11.html
 [5]: https://www.rfc-editor.org/rfc/rfc9106.html
 [6]: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#argon2id
+[7]: https://github.com/protocol/research-grants/blob/master/RFPs/rfp-014-private-retrieval-of-data.md
